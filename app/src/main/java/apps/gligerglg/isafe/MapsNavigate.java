@@ -11,7 +11,9 @@ import android.speech.tts.TextToSpeech;
 import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.BottomSheetBehavior;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
@@ -33,6 +35,7 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -43,6 +46,7 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -83,14 +87,15 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private LatLng myLatLanLocation;
     private Location myLocation;
 
+    private CoordinatorLayout layout;
     private Location bearingLocation = new Location("Bearing");
     private ImageButton btn_slideDown;
-    private LinearLayout btn_driveInfo, btn_newIncident, btn_dayNight, btn_emergency;
+    private LinearLayout btn_voiceAssistant, btn_newIncident, btn_dayNight, btn_emergency;
     private CardView btn_incident_accident, btn_incident_traffic, btn_incident_hazard, btn_incident_clauser, btn_incident_flood, btn_incident_landslip;
 
     private ConstraintLayout driveInfoLayout, incidentLayout, incident_info_layout;
     private BottomSheetBehavior driveInfoSheet, incidentSheet, incident_info;
-    private TextView txt_ETA, txt_distance;
+    private TextView txt_ETA, txt_distance, txt_dayNight, txt_voiceAssistant;
 
     private Fab fab;
     private FloatingActionButton btn_cam_ctrl;
@@ -114,6 +119,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     private boolean isDayStyleEnabled = true;
     private boolean isMapDraggable = false;
+    private boolean isMapReady = false;
 
     private ImageView img_incident;
 
@@ -144,6 +150,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private boolean isRealtimeObjectFound = false;
     private boolean isSpeedLimitObjectFound = false, isCriticalObjectFound = false;
     private boolean isTrafficObjectFound = false, isBlackspotObjectFound = false;
+    private boolean isVoiceAssistantEnabled = true;
 
     private RealtimeIncident currentIncident = null;
     private SpeedLimitPoint currentSpeedPoint = null;
@@ -154,6 +161,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     ///////////////////////////////
     private Queue<LatLng> pointQueue;
     private Handler mokeLocationGenerateHandler;
+
     //////////////////////////////
 
 
@@ -223,15 +231,19 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
-        btn_driveInfo.setOnClickListener(new View.OnClickListener() {
+        btn_voiceAssistant.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(incidentSheet.getState()==BottomSheetBehavior.STATE_EXPANDED)
-                    incidentSheet.setState(BottomSheetBehavior.STATE_HIDDEN);
-                updateDriverInfoUI();
-                driveInfoSheet.setState(BottomSheetBehavior.STATE_EXPANDED);
+                if(isVoiceAssistantEnabled) {
+                    isVoiceAssistantEnabled = false;
+                    txt_voiceAssistant.setText("Enable Voice Assistant");
+                }
+                else {
+                    isVoiceAssistantEnabled = true;
+                    txt_voiceAssistant.setText("Disable Voice Assistant");
+                }
+
                 materialSheetFab.hideSheet();
-                fab.setVisibility(View.GONE);
             }
         });
 
@@ -242,11 +254,13 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 if(isDayStyleEnabled) {
                     styleOptions = MapStyleOptions.loadRawResourceStyle(getApplicationContext(), R.raw.night_style);
                     mMap.setMapStyle(styleOptions);
+                    txt_dayNight.setText("Set Day Style");
                     isDayStyleEnabled = false;
                 }
                 else {
                     styleOptions = MapStyleOptions.loadRawResourceStyle(getApplicationContext(), R.raw.day_style);
                     mMap.setMapStyle(styleOptions);
+                    txt_dayNight.setText("Set Night Style");
                     isDayStyleEnabled = true;
                 }
 
@@ -259,11 +273,10 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             public void onClick(View view) {
                 if(driveInfoSheet.getState()==BottomSheetBehavior.STATE_EXPANDED)
                     driveInfoSheet.setState(BottomSheetBehavior.STATE_HIDDEN);
+                img_position.setVisibility(View.GONE);
                 incidentSheet.setState(BottomSheetBehavior.STATE_EXPANDED);
                 materialSheetFab.hideSheet();
                 fab.setVisibility(View.GONE);
-
-                img_position.setVisibility(View.GONE);
             }
         });
 
@@ -340,13 +353,15 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 try {
                     if (isMapDraggable) {
                         isMapDraggable = false;
+                        resetDataMap();
                         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLanLocation, 19.0f));
                         mMap.getUiSettings().setAllGesturesEnabled(false);
                         btn_cam_ctrl.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_drag_enable));
                     } else {
                         isMapDraggable = true;
                         img_position.setVisibility(View.GONE);
-                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLanLocation, 16.0f));
+                        setCameraBounds();
+                        visualizeIncidentData();
                         mMap.getUiSettings().setAllGesturesEnabled(true);
                         btn_cam_ctrl.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_recenter));
                     }
@@ -416,6 +431,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         locusService = new LocusService(getApplicationContext());
         img_position = findViewById(R.id.img_poition);
         img_position.setVisibility(View.GONE);
+        layout = findViewById(R.id.layout_navigate);
 
         // Initialize Firebase-database
         database = FirebaseDatabase.getInstance();
@@ -429,7 +445,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         blackspotHandler = new Handler();
 
         btn_slideDown = findViewById(R.id.btn_sheetDown);
-        btn_driveInfo = findViewById(R.id.btn_driveInfo);
+        btn_voiceAssistant = findViewById(R.id.btn_voiceAssistant);
         btn_newIncident = findViewById(R.id.btn_newIncident);
         btn_dayNight = findViewById(R.id.btn_dayNight);
         btn_emergency = findViewById(R.id.btn_emergency);
@@ -454,6 +470,8 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         txt_incident_description = findViewById(R.id.txt_incident_description);
         txt_incident_time = findViewById(R.id.txt_incident_time);
         txt_incident_type = findViewById(R.id.txt_incident_type);
+        txt_dayNight = findViewById(R.id.txt_dayNight);
+        txt_voiceAssistant = findViewById(R.id.txt_voiceAssistant);
 
         btn_incident_accident = findViewById(R.id.btn_incident_accident);
         btn_incident_traffic = findViewById(R.id.btn_incident_traffic);
@@ -488,15 +506,13 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         mMap.getUiSettings().setMapToolbarEnabled(false);
         mMap.getUiSettings().setCompassEnabled(false);
         //mMap.getUiSettings().setAllGesturesEnabled(false);
-        mMap.addMarker(new MarkerOptions().position(route.getStart_point()).icon(BitmapDescriptorFactory.fromResource(R.drawable.home_pin)));
-        mMap.addMarker(new MarkerOptions().position(route.getDestination()));
-        drawPolyLine(route.getPoints(),R.color.colorPrimary);
+
+        isMapReady = true;
 
         /////////////////////////////////////////////////////////////////////////////////////
 
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(route.getStart_point(),19.0f));
-        drawSpeedPath();
-        drawCriticalPath();
+        resetDataMap();
         //////////////////////////////////////////////////////////////////////////////////////
     }
 
@@ -504,6 +520,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         PolylineOptions polylineOptions = new PolylineOptions();
         polylineOptions.color(getResources().getColor(color));
         polylineOptions.addAll(pointList);
+        polylineOptions.width(12);
         mMap.addPolyline(polylineOptions);
     }
 
@@ -645,7 +662,16 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         if(myLatLanLocation!=null){
             String hashID = generateHashID(position.latitude, position.longitude, incidentType);
             RealtimeIncident incident = new RealtimeIncident(hashID, incidentType, "ABC", getCurrentDateTime(), position.latitude, position.longitude);
-            myRef.child(incident.getIncident_id()).setValue(incident);
+
+            if(currentIncident!=null){
+                if(!incident.getIncident_name().equals(currentIncident.getIncident_name())){
+                    myRef.child(incident.getIncident_id()).setValue(incident);
+                }
+                else
+                    setMessage("This incident is already exists!");
+            }
+            else
+                myRef.child(incident.getIncident_id()).setValue(incident);
         }
     }
 
@@ -722,8 +748,10 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 currentIncident = point;
                 break;
             }
-            else
+            else {
                 isRealtimeObjectFound = false;
+                currentIncident=null;
+            }
         }
 
         if(isRealtimeObjectFound && !isRealtimeIncidentNotified){
@@ -965,8 +993,10 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             Toast.makeText(getApplicationContext(),"Text to Speech Failed!",Toast.LENGTH_SHORT).show();
     }
 
-    private void speakNotification(String message){
-        textToSpeech.speak(message,TextToSpeech.QUEUE_ADD,null);
+    private void speakNotification(String message)  //Set Voice Assistant
+    {
+        if(isVoiceAssistantEnabled)
+            textToSpeech.speak(message,TextToSpeech.QUEUE_ADD,null);
     }
 
     @Override
@@ -980,6 +1010,88 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 startActivity(installTTS);
             }
         }
+    }
+
+    private void setMessage(String message){
+        Snackbar snackbar = Snackbar.make(layout,message,Snackbar.LENGTH_LONG);
+        snackbar.show();
+    }
+
+    private void visualizeIncidentData()    //Visualize All Incidents in the Map
+    {
+        if(isMapReady){
+            //Real-time Data
+            for(RealtimeIncident incident : realtimeIncidentHashMap.values()){
+                mMap.addCircle(new CircleOptions().strokeWidth(2).radius(realtimeRadius).fillColor(0x22ff0000)
+                        .strokeColor(Color.TRANSPARENT).center(new LatLng(incident.getLatitude(), incident.getLongitude())));
+
+                mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(incident.getLatitude(),incident.getLongitude()))
+                        .title(incident.getIncident_name())
+                        .icon(BitmapDescriptorFactory.fromResource(mapMarkerIcon(incident.getIncident_name()))));
+            }
+
+            //Blackspots
+            for(BlackSpot blackSpot : blackSpotList){
+                mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(blackSpot.getLatitude(), blackSpot.getLongitude()))
+                        .title("BlackSpot")
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.accident_pin)));
+                mMap.addCircle(new CircleOptions().strokeWidth(2).radius(blackSpot.getRadius()).fillColor(0x22e61919)
+                        .strokeColor(Color.TRANSPARENT).center(new LatLng(blackSpot.getLatitude(), blackSpot.getLongitude())));
+            }
+
+            //Traffic Sign
+            for(TrafficSign trafficSign : trafficSignList){
+                mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(trafficSign.getLatitude(), trafficSign.getLongitude()))
+                        .title(trafficSign.getSign())
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.accident_pin)));
+                mMap.addCircle(new CircleOptions().strokeWidth(2).radius(trafficSign.getRadius()).fillColor(0x22255dea)
+                        .strokeColor(Color.TRANSPARENT).center(new LatLng(trafficSign.getLatitude(), trafficSign.getLongitude())));
+            }
+
+            //Remove all Thread Callbacks
+            bearingHandler.removeCallbacks(bearingThread);
+            realtimeIncidentHandler.removeCallbacks(realtimeIncidentThread);
+            speedPointHandler.removeCallbacks(speedPointThread);
+            criticalLocationHandler.removeCallbacks(criticalLocationThread);
+            trafficSignHandler.removeCallbacks(trafficSignThread);
+            blackspotHandler.removeCallbacks(blackspotThread);
+        }
+    }
+
+    private void resetDataMap() //Clear Incident data & Draw Paths
+    {
+        //Clear Map
+        mMap.clear();
+
+        if(isMapReady){
+            mMap.addMarker(new MarkerOptions().position(route.getStart_point()).title("My Location").icon(BitmapDescriptorFactory.fromResource(R.drawable.start_point)));
+            mMap.addMarker(new MarkerOptions().position(route.getDestination()).title("Destination").icon(BitmapDescriptorFactory.fromResource(R.drawable.stop_point)));
+            drawPolyLine(route.getPoints(),R.color.colorPrimary);
+            drawCriticalPath();
+            drawSpeedPath();
+        }
+
+        //Start all threads
+        bearingHandler.postDelayed(bearingThread,bearingInterval);
+        realtimeIncidentHandler.postDelayed(realtimeIncidentThread,realtimeIncidentInterval);
+
+        speedPointHandler.postDelayed(speedPointThread,speedPointInterval);
+        criticalLocationHandler.postDelayed(criticalLocationThread,criticalLocationInterval);
+        trafficSignHandler.postDelayed(trafficSignThread,trafficSignInterval);
+        blackspotHandler.postDelayed(blackspotThread,blackspotInterval);
+    }
+
+    private void setCameraBounds()  //Set Camera bounds according to the Start & Destination Positions
+    {
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+        builder.include(route.getStart_point());
+        builder.include(route.getDestination());
+        LatLngBounds bounds = builder.build();
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds,75);
+        mMap.animateCamera(cameraUpdate);
     }
 
     //////////////////////////////////////////////////////////////////
