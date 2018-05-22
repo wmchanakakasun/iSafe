@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "496871991366",
+    "firebase_url": "https://isafe-5e90f.firebaseio.com",
+    "project_id": "isafe-5e90f",
+    "storage_bucket": "isafe-5e90f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:496871991366:android:bf0489fbbf8da3f2",
+        "android_client_info": {
+          "package_name": "apps.gligerglg.isafe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "496871991366-di0pjkmgsbkc62mlvplbs4326lfjboc3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "apps.gligerglg.isafe",
+            "certificate_hash": "2bd51b829951e620d783075d27a28dfe00a263e2"
+          }
+        },
+        {
+          "client_id": "496871991366-i2d1qt810vnhf44uc9t4cqq6smbsljh4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAWOtYf4z4Fj6dDL4mC9n9h0n8AQ0TyPAY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "496871991366-i2d1qt810vnhf44uc9t4cqq6smbsljh4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

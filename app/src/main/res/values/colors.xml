@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="sheetColor">#FFF</color>
+    <color name="fabColor">#000</color>
+    <color name="speedPointColor">#049704</color>
+    <color name="criticalLocationColor">#d79c13</color>
+    <color name="roadSignColor">#255dea</color>
+    <color name="blackspotColor">#e61919</color>
+</resources>
