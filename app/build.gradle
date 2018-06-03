@@ -42,6 +42,7 @@ dependencies {
     implementation "android.arch.persistence.room:runtime:1.0.0"
     annotationProcessor "android.arch.persistence.room:compiler:1.0.0"
     implementation 'com.tapadoo.android:alerter:2.0.6'
+    implementation 'com.github.dimorinny:floating-text-button:0.0.4'
 }
 
 

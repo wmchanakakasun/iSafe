@@ -673,9 +673,11 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
             if(currentIncident!=null){
                 if(!incident.getIncident_name().equals(currentIncident.getIncident_name())){
-                    setPopupMessage("New Earning","Congratulations! You have earned 25 points",R.drawable.icon_voice,false);
+                    System.out.println("Start");
                     myRef.child(incident.getIncident_id()).setValue(incident);
                     scoreDB.scoreDao().insertScore(new Score(route.getEndLocation(),getCurrentDateTime(),25,0));
+                    setPopupMessage("New Earning","Congratulations! You have earned 25 points",R.drawable.icon_voice,false);
+                    System.out.println("Stop");
                 }
                 else
                     setMessage("This incident is already exists!");

@@ -71,6 +71,13 @@ public class MainMenu extends AppCompatActivity {
 
             }
         });
+
+        btn_points.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainMenu.this,PointsActivity.class));
+            }
+        });
     }
 
 }
