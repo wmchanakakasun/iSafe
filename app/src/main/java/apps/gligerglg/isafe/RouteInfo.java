@@ -15,19 +15,30 @@ public class RouteInfo implements Parcelable {
     private LatLng start_point;
     private LatLng destination;
     private List<LatLng> points;
-
+    private String endLocation;
     private int distance;
     private int duration;
 
     public RouteInfo() {
     }
 
-    public RouteInfo(LatLng start_point, LatLng destination, List<LatLng> points, int distance, int duration) {
+
+    public String getEndLocation() {
+        return endLocation;
+    }
+
+    public void setEndLocation(String endLocation) {
+        this.endLocation = endLocation;
+    }
+
+    public RouteInfo(LatLng start_point, LatLng destination, List<LatLng> points,String endLocation, int distance, int duration) {
         this.start_point = start_point;
         this.destination = destination;
         this.points = points;
+        this.endLocation = endLocation;
         this.distance = distance;
         this.duration = duration;
+
     }
 
     public LatLng getStart_point() {

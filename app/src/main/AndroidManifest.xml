@@ -38,11 +38,12 @@
             android:value="@string/google_maps_key" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".Navigation"
             android:label="@string/title_activity_main" />
         <activity
             android:name=".MapsNavigate"
-            android:label="@string/title_activity_maps_navigate"></activity>
+            android:label="@string/title_activity_maps_navigate" />
+        <activity android:name=".MainMenu" />
     </application>
 
 </manifest>

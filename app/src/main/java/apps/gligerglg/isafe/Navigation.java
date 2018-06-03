@@ -2,11 +2,7 @@ package apps.gligerglg.isafe;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
 import android.location.Location;
-import android.support.constraint.ConstraintLayout;
-import android.support.design.widget.BottomSheetBehavior;
-import android.support.design.widget.BottomSheetDialog;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -14,12 +10,7 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.CardView;
-import android.transition.Visibility;
 import android.view.View;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.Toast;
 
 import com.directions.route.AbstractRouting;
 import com.directions.route.Route;
@@ -35,7 +26,6 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
@@ -53,7 +43,7 @@ import java.util.List;
 import plugins.gligerglg.locusservice.LocusService;
 import rx.functions.Action1;
 
-public class MainActivity extends FragmentActivity implements OnMapReadyCallback,RoutingListener {
+public class Navigation extends FragmentActivity implements OnMapReadyCallback,RoutingListener {
 
     private GoogleMap mMap;
     private LatLng myPosition = null, destination = null;
@@ -71,27 +61,14 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_navigation);
 
-        PermissionsManager.init(this);
-        PermissionsManager.get()
-                .requestLocationPermission()
-                .subscribe(new Action1<PermissionsResult>() {
-                    @Override
-                    public void call(PermissionsResult permissionsResult) {
-                        if (permissionsResult.isGranted()) { // always true pre-M
-                            // do whatever
-                        }
-                        if (permissionsResult.hasAskedForPermissions()) { // false if pre-M
-                            // do whatever
-                        }
-                    }
-                });
+
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
         Init();
-        myPosition = new LatLng(6.706412,80.5446107);
+        myPosition = new LatLng(5.9382617,80.5734473);
 
 
         btn_gps.setOnClickListener(new View.OnClickListener() {
@@ -170,7 +147,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private void showPathInfoDialog()
     {
         AlertDialog.Builder builder =
-                new AlertDialog.Builder(MainActivity.this,R.style.Theme_AppCompat_Dialog_Alert);
+                new AlertDialog.Builder(Navigation.this,R.style.Theme_AppCompat_Dialog_Alert);
         builder.setTitle("Selected Path Navigation");
         builder.setMessage("Distance\t\t" + selected_path.getDistanceText() + "\nDuration\t\t" + selected_path.getDurationText());
         builder.setCancelable(false);
@@ -178,7 +155,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 Intent intent = new Intent(getApplicationContext(),MapsNavigate.class);
-                intent.putExtra("route",new RouteInfo(myPosition,destination,selected_path.getPoints(),
+                intent.putExtra("route",new RouteInfo(myPosition,destination,selected_path.getPoints(),destination_name,
                         selected_path.getDistanceValue(),selected_path.getDurationValue()));
                 startActivity(intent);
             }

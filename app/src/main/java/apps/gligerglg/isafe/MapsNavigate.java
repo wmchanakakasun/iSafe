@@ -1,5 +1,6 @@
 package apps.gligerglg.isafe;
 
+import android.arch.persistence.room.Room;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -57,6 +58,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.gordonwong.materialsheetfab.MaterialSheetFab;
+import com.tapadoo.alerter.Alerter;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -103,6 +105,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private Handler bearingHandler, realtimeIncidentHandler;
     private Handler speedPointHandler, criticalLocationHandler, trafficSignHandler, blackspotHandler;
     private int total_distance, total_duration;
+    private ScoreDB scoreDB;
 
     private static final int bearingInterval = 2000;
 
@@ -366,6 +369,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                         btn_cam_ctrl.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_recenter));
                     }
                 }catch (Exception e){}
+
             }
         });
 
@@ -427,6 +431,10 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         total_distance = route.getDistance();
         total_duration = route.getDuration();
         locusInterval = (int) ((route.getPoints().size() * 0.02 *2) + 500);
+
+        scoreDB = Room.databaseBuilder(getApplicationContext(),ScoreDB.class,"ScoreDB").fallbackToDestructiveMigration()
+                .allowMainThreadQueries()
+                .build();
 
         locusService = new LocusService(getApplicationContext());
         img_position = findViewById(R.id.img_poition);
@@ -665,7 +673,9 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
             if(currentIncident!=null){
                 if(!incident.getIncident_name().equals(currentIncident.getIncident_name())){
+                    setPopupMessage("New Earning","Congratulations! You have earned 25 points",R.drawable.icon_voice,false);
                     myRef.child(incident.getIncident_id()).setValue(incident);
+                    scoreDB.scoreDao().insertScore(new Score(route.getEndLocation(),getCurrentDateTime(),25,0));
                 }
                 else
                     setMessage("This incident is already exists!");
@@ -673,6 +683,19 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             else
                 myRef.child(incident.getIncident_id()).setValue(incident);
         }
+    }
+
+    private void setPopupMessage(String title, String message, int icon, boolean voiceAssist){
+        Alerter.create(this)
+                .setTitle(title)
+                .setText(message)
+                .setIcon(icon)
+                .setBackgroundColorRes(R.color.colorPrimaryDark)
+                .setDuration(5000)
+                .show();
+
+        if(voiceAssist)
+            speakNotification(message);
     }
 
     private int mapMarkerIcon(String type){
@@ -751,6 +774,8 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             else {
                 isRealtimeObjectFound = false;
                 currentIncident=null;
+                if(incident_info.getState()==BottomSheetBehavior.STATE_EXPANDED)
+                    incident_info.setState(BottomSheetBehavior.STATE_HIDDEN);
             }
         }
 
@@ -758,7 +783,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             isRealtimeIncidentNotified = true;
             realtimeCircle = mMap.addCircle(new CircleOptions().strokeWidth(2).radius(realtimeRadius).fillColor(0x22ff0000)
                     .strokeColor(Color.TRANSPARENT).center(new LatLng(currentIncident.getLatitude(), currentIncident.getLongitude())));
-            setIncidentAlert(true, currentIncident.getIncident_name() + " Found!",
+            setIncidentAlert(currentIncident.getIncident_name() + " Found!",
                     currentIncident.getIncident_name() + " Found!\nIt is reported " + generateIncidentTime(currentIncident.getTime()),
                     generateIncidentTime(currentIncident.getTime()),
                     getIncidentImage(currentIncident.getIncident_name()));
@@ -788,7 +813,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         }
 
         if(isSpeedLimitObjectFound && !isSpeedLimitNotified){
-            setIncidentAlert(false, "Speed Limit", currentSpeedPoint.getMessage(), "Drive under " + currentSpeedPoint.getSpeedLimit() + " kmh", R.drawable.accident);
+            setPopupMessage("Speed Limit",currentSpeedPoint.getMessage() + "Drive under " + currentSpeedPoint.getSpeedLimit() + " kmh", R.drawable.accident,true);
             isSpeedLimitNotified = true;
         }else if(!isSpeedLimitObjectFound){
             isSpeedLimitNotified = false;
@@ -807,7 +832,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         }
 
         if(isCriticalObjectFound && !isCriticalNotified){
-            setIncidentAlert(false, "Critical Location", currentCriticalPoint.getMessage(), "", R.drawable.accident);
+            setPopupMessage("Critical Location", currentCriticalPoint.getMessage(), R.drawable.accident,true);
             isCriticalNotified = true;
         }
         else if(!isCriticalObjectFound){
@@ -835,7 +860,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             trafficSignCircle = mMap.addCircle(new CircleOptions().strokeWidth(2).radius(currentTrafficSign.getRadius()).fillColor(0x22255dea)
                     .strokeColor(Color.TRANSPARENT).center(new LatLng(currentTrafficSign.getLatitude(), currentTrafficSign.getLongitude())));
             //Set Alert
-            setIncidentAlert(false, currentTrafficSign.getSign(), currentTrafficSign.getMessage(), "", R.drawable.accident);
+            setPopupMessage(currentTrafficSign.getSign(),currentTrafficSign.getMessage(),R.drawable.accident,true);
         }else if(!isTrafficObjectFound){
             isTrafficSignNotified = false;
 
@@ -868,7 +893,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             blackspotCircle = mMap.addCircle(new CircleOptions().strokeWidth(2).radius(currentBlackspot.getRadius()).fillColor(0x22e61919)
                     .strokeColor(Color.TRANSPARENT).center(new LatLng(currentBlackspot.getLatitude(), currentBlackspot.getLongitude())));
             //Set Alert
-            setIncidentAlert(false, "Accident Blackspot", currentBlackspot.getMessage(), "", R.drawable.accident);
+            setPopupMessage("Accident Black-spot",currentBlackspot.getMessage(), R.drawable.accident,true);
         }
         else if(!isBlackspotObjectFound){
             isBlackspotNotified = false;
@@ -915,12 +940,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         return 12.742 * Math.asin(Math.sqrt(a))*1000*1000;
     }
 
-    private void setIncidentAlert(boolean isRealtimeIncident,String incident_name, String message,String time, int image){
-
-        if(isRealtimeIncident)
-            btn_remove_incident.setText("Remove Incident");
-        else
-            btn_remove_incident.setText("Got It!");
+    private void setIncidentAlert(String incident_name, String message,String time, int image){
 
         txt_incident_type.setText(incident_name);
         txt_incident_time.setText(time);
@@ -1123,16 +1143,13 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private void initializeData(){
         speedLimitPointList.add(new SpeedLimitPoint(6.71009,80.52014,30,40,400,
                 "You are in a Speed limit Zone.\nPlease Drive under 30 kilometers per hour"));
-        criticalLocationList.add(new CriticalLocation(6.71453,80.50599,200,"Please Drive carefully. So many bends here","",""));
-        trafficSignList.add(new TrafficSign(6.71284,80.53694,75,"Nearby Pedestrian Crossing","Pedestrian Crossing"));
-        trafficSignList.add(new TrafficSign(6.712,80.53135,75,"Nearby Silent Zone","Silent Zone"));
-        trafficSignList.add(new TrafficSign(6.71341,80.52912,75,"Road Can be slippy","Slippy Road"));
-        trafficSignList.add(new TrafficSign(6.71029,80.51549,75,"Nearby Silent Zone","Silent Zone"));
+        criticalLocationList.add(new CriticalLocation(5.9376317,80.5730873,100,"Please Drive carefully. So many bends here","",""));
+        trafficSignList.add(new TrafficSign(5.9376317,80.5730873,75,"Pedestrian Crossing","Pedestrian Crossing"));
+        trafficSignList.add(new TrafficSign(5.9376317,80.5730873,75,"Nearby Silent Zone","Silent Zone"));
+        trafficSignList.add(new TrafficSign(5.942877,80.5669242,75,"Three way junction here","Slippy Road"));
 
-        blackSpotList.add(new BlackSpot(6.71296,80.53289,200,"So many accidents",0));
-        blackSpotList.add(new BlackSpot(6.71346,80.52559,200,"6 killed here",0));
-        blackSpotList.add(new BlackSpot(6.71468,80.50464,200,"No damage",0));
-        blackSpotList.add(new BlackSpot(6.71453,80.50338,200,"So many accidents",0));
+        blackSpotList.add(new BlackSpot(5.9408335,80.5705505,100,"Be care full! So many accidents",0));
+        blackSpotList.add(new BlackSpot(5.9406734,80.5662053,200,"Dangerous Bend",0));
 
     }
 
