@@ -116,10 +116,6 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     private int locusInterval = 1000;
     private static final int realtimeRadius = 50;
-    private static final String API_KEY = "AIzaSyBzWgH_kMkkWhrQNr9SMVSx7cDQ60rxNio";
-    private String BASE_URI = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=";
-
-    private RequestQueue requestQueue;
 
     private ImageView img_position;
     FirebaseDatabase database;
@@ -139,7 +135,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     //Static Incident Lists
     private HashMap<String,RealtimeIncident> realtimeIncidentHashMap;
-    private HashMap<LatLng,Double>  speedMap;
+    private List<SpeedMarker>  speedMap;
     private List<SpeedLimitPoint> speedLimitPointList;
     private List<CriticalLocation> criticalLocationList;
     private List<TrafficSign> trafficSignList;
@@ -443,8 +439,12 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     private void Init() {
 
-        Bundle data = getIntent().getExtras();
-        route = data.getParcelable("route");
+        String dataset = getIntent().getStringExtra("route");
+        if(dataset!=null){
+            Gson gson = new Gson();
+            route = gson.fromJson(dataset,RouteInfo.class);
+        }
+
         total_distance = route.getDistance();
         total_duration = route.getDuration();
         locusInterval = (int) ((route.getPoints().size() * 0.02 *2) + 500);
@@ -510,7 +510,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         img_incident = findViewById(R.id.img_incident_icon);
 
         realtimeIncidentHashMap = new HashMap<>();
-        speedMap = new HashMap<>();
+        speedMap = new ArrayList<>();
         speedLimitPointList = new ArrayList<>();
         criticalLocationList = new ArrayList<>();
         trafficSignList = new ArrayList<>();
@@ -685,7 +685,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         Double speed = getDistance(point1,point2);
         test.setText(speed + " ms");
         if(speed!=0)
-            speedMap.put(myLatLanLocation,speed);
+            speedMap.add(new SpeedMarker(myLatLanLocation.latitude,myLatLanLocation.longitude,speed));
     }
 
     private int getIncidentImage(String incident_name){
@@ -794,49 +794,6 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         });
 
         builder.create().show();
-    }
-
-    private void updateDriverInfoUI(){
-        if(myLatLanLocation!=null) {
-            BASE_URI += myLatLanLocation.latitude + "," + myLatLanLocation.longitude + "&destinations=" + route.getDestination().latitude + "," + route.getDestination().longitude +
-                    "&key=" + API_KEY;
-            requestQueue = Volley.newRequestQueue(getApplicationContext());
-
-            final StringRequest request = new StringRequest(Request.Method.GET, BASE_URI, new Response.Listener<String>() {
-                @Override
-                public void onResponse(String response) {
-                    try {
-                        JSONObject jsonObject = new JSONObject(response);
-
-                        JSONObject element = jsonObject.getJSONArray("rows").getJSONObject(0).getJSONArray("elements").getJSONObject(0);
-                        String distance = element.getJSONObject("distance").getString("text");
-                        String duration = element.getJSONObject("duration").getString("text");
-                        txt_distance.setText(distance);
-                        txt_ETA.setText(duration);
-
-                        requestQueue.cancelAll(this);
-                        Toast.makeText(getApplicationContext(),distance + "\n" + duration,Toast.LENGTH_SHORT).show();
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                        Toast.makeText(getApplicationContext(),e.toString(),Toast.LENGTH_SHORT).show();
-                    }
-                }
-            }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    Toast.makeText(getApplicationContext(),error.toString(),Toast.LENGTH_SHORT).show();
-                }
-            });
-
-            request.setTag(this);
-            requestQueue.add(request);
-
-
-        }
-        else {
-            txt_distance.setText("--");
-            txt_ETA.setText("--");
-        }
     }
 
     private void realtimeIncidentReport(){
@@ -1181,26 +1138,16 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void generateDrivingSummery(){
-        List<LatLng> latlngList = new ArrayList<>();
-        List<Double> speedList = new ArrayList<>();
-        for(LatLng point : speedMap.keySet())
-            latlngList.add(point);
-
-        for(Double val : speedMap.values())
-            speedList.add(val);
-
         SummeryInfo summeryInfo = new SummeryInfo();
         summeryInfo.setStart_location(route.getStart_point());
         summeryInfo.setEnd_location(route.getDestination());
         summeryInfo.setScore_addIncidents(score_addIncident);
         summeryInfo.setScore_overSpeed(score_OverSpeed);
         summeryInfo.setScore_removeIncidents(score_removeIncident);
-        summeryInfo.setLatlngMap(latlngList);
-        summeryInfo.setSpeedMap(speedList);
-
+        summeryInfo.setSpeedMarkerList(speedMap);
+        String dataSet = new Gson().toJson(summeryInfo);
         Intent intent = new Intent(MapsNavigate.this,DrivingSummery.class);
-        intent.putExtra("summeryInfo",summeryInfo);
-
+        intent.putExtra("summeryInfo",dataSet);
         startActivity(intent);
     }
 

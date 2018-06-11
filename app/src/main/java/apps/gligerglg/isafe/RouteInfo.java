@@ -11,7 +11,7 @@ import java.util.List;
  * Created by Gayan Lakshitha on 4/16/2018.
  */
 
-public class RouteInfo implements Parcelable {
+public class RouteInfo{
     private LatLng start_point;
     private LatLng destination;
     private List<LatLng> points;
@@ -81,37 +81,4 @@ public class RouteInfo implements Parcelable {
         this.duration = duration;
     }
 
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeParcelable(this.start_point, flags);
-        dest.writeParcelable(this.destination, flags);
-        dest.writeTypedList(this.points);
-        dest.writeInt(this.distance);
-        dest.writeInt(this.duration);
-    }
-
-    protected RouteInfo(Parcel in) {
-        this.start_point = in.readParcelable(LatLng.class.getClassLoader());
-        this.destination = in.readParcelable(LatLng.class.getClassLoader());
-        this.points = in.createTypedArrayList(LatLng.CREATOR);
-        this.distance = in.readInt();
-        this.duration = in.readInt();
-    }
-
-    public static final Creator<RouteInfo> CREATOR = new Creator<RouteInfo>() {
-        @Override
-        public RouteInfo createFromParcel(Parcel source) {
-            return new RouteInfo(source);
-        }
-
-        @Override
-        public RouteInfo[] newArray(int size) {
-            return new RouteInfo[size];
-        }
-    };
 }

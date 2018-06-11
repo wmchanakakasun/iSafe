@@ -33,6 +33,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.maps.model.RoundCap;
+import com.google.gson.Gson;
 
 import net.ralphpina.permissionsmanager.PermissionsManager;
 import net.ralphpina.permissionsmanager.PermissionsResult;
@@ -167,8 +168,10 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 Intent intent = new Intent(getApplicationContext(),MapsNavigate.class);
-                intent.putExtra("route",new RouteInfo(myPosition,destination,selected_path.getPoints(),destination_name,
-                        selected_path.getDistanceValue(),selected_path.getDurationValue()));
+                RouteInfo routeInfo = new RouteInfo(myPosition,destination,selected_path.getPoints(),destination_name,
+                        selected_path.getDistanceValue(),selected_path.getDurationValue());
+                String data = new Gson().toJson(routeInfo);
+                intent.putExtra("route",data);
                 startActivity(intent);
                 finish();
             }
