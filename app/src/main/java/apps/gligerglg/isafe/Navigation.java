@@ -32,6 +32,7 @@ import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.maps.model.RoundCap;
 
 import net.ralphpina.permissionsmanager.PermissionsManager;
 import net.ralphpina.permissionsmanager.PermissionsResult;
@@ -49,6 +50,8 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
     private LatLng myPosition = null, destination = null;
     private LocusService locusService;
 
+    private double myLocLat, myLocLon, desLat,desLon;
+    private boolean isReroute = false;
     private CoordinatorLayout layout;
     private FloatingActionButton btn_gps;
     private PlaceAutocompleteFragment autocompleteFragment;
@@ -56,7 +59,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
     private String destination_name;
     private Route selected_path;
     private HashMap<Polyline,Route> routeHashMap = new HashMap<>();
-    private static final int[] COLORS = new int[]{R.color.colorPrimary,R.color.primary_dark_material_light};
+    private static final int[] COLORS = new int[]{R.color.colorPrimary,R.color.alternativeRouteColor};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,8 +71,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
         mapFragment.getMapAsync(this);
 
         Init();
-        myPosition = new LatLng(5.9382617,80.5734473);
-
+        //myPosition = new LatLng(5.9382617,80.5734473);
 
         btn_gps.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -100,7 +102,6 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
                     mMap.addMarker(new MarkerOptions().position(myPosition).title("My Location"));
                     mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myPosition,14.0f));
                     locusService.stopRealTimeGPSListening();
-                    btn_gps.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),R.drawable.icon_navigation));
 
                     if(destination!=null)
                         route();
@@ -135,6 +136,17 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
     }
 
     private void Init() {
+
+        isReroute = getIntent().getBooleanExtra("isReroute",false);
+        if(isReroute){
+            myLocLat = getIntent().getDoubleExtra("myLocLat",0);
+            myLocLon = getIntent().getDoubleExtra("myLocLon",0);
+            desLat = getIntent().getDoubleExtra("desLat",0);
+            desLon = getIntent().getDoubleExtra("desLon",0);
+            myPosition = new LatLng(myLocLat,myLocLon);
+            destination = new LatLng(desLat,desLon);
+        }
+
         locusService = new LocusService(this,false);
         layout = findViewById(R.id.main_coordinatorLayout);
         btn_gps = findViewById(R.id.main_fab_gps);
@@ -158,6 +170,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
                 intent.putExtra("route",new RouteInfo(myPosition,destination,selected_path.getPoints(),destination_name,
                         selected_path.getDistanceValue(),selected_path.getDurationValue()));
                 startActivity(intent);
+                finish();
             }
         });
         builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
@@ -191,16 +204,21 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(7.5414423,80.6452276),7.0f));
         mMap.getUiSettings().setMapToolbarEnabled(false);
 
+        if(isReroute){
+            route();
+        }
+
         mMap.setOnPolylineClickListener(new GoogleMap.OnPolylineClickListener() {
             @Override
             public void onPolylineClick(Polyline polyline) {
                 selected_path = routeHashMap.get(polyline);
                 mMap.clear();
                 for(Polyline poly : polylines)
-                    drawPolyLine(poly,1);
-                drawPolyLine(polyline,0);
+                    MapController.drawPolyline(getApplicationContext(),poly.getPoints(),R.color.alternativeRouteColor,mMap);
+                MapController.drawPolyline(getApplicationContext(),polyline.getPoints(),R.color.colorPrimary,mMap);
             }
         });
+
     }
 
 
@@ -232,7 +250,8 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
                 drawRoute(routes.get(i),1);
         }
         drawRoute(routes.get(shortestRouteIndex),0);
-        setCameraBounds();
+        MapController.setCameraBounds(myPosition,destination,mMap);
+        btn_gps.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),R.drawable.icon_navigation));
     }
 
     private void drawRoute(Route route, int colorIndex)
@@ -247,25 +266,9 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
         polyline.setClickable(true);
     }
 
-    private void drawPolyLine(Polyline polyline, int colorIndex){
-
-        PolylineOptions polylineOptions = new PolylineOptions();
-        polylineOptions.color(getResources().getColor(COLORS[colorIndex]));
-        polylineOptions.addAll(polyline.getPoints());
-        mMap.addPolyline(polylineOptions);
-    }
-
     @Override
     public void onRoutingCancelled() {
 
     }
 
-    private void setCameraBounds() {
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        builder.include(myPosition);
-        builder.include(destination);
-        LatLngBounds bounds = builder.build();
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, 75);
-        mMap.animateCamera(cameraUpdate);
-    }
 }

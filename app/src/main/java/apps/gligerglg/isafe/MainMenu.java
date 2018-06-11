@@ -67,7 +67,7 @@ public class MainMenu extends AppCompatActivity {
         btn_settings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //startActivity(new Intent(MainMenu.this,SettingsActivity.class));
+                startActivity(new Intent(MainMenu.this,SettingsActivity.class));
 
             }
         });

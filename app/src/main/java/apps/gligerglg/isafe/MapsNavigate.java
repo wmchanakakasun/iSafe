@@ -2,6 +2,7 @@ package apps.gligerglg.isafe;
 
 import android.arch.persistence.room.Room;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Point;
@@ -18,6 +19,7 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.AppCompatButton;
 import android.support.v7.widget.CardView;
 import android.view.View;
@@ -52,11 +54,13 @@ import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.maps.model.RoundCap;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.gson.Gson;
 import com.gordonwong.materialsheetfab.MaterialSheetFab;
 import com.tapadoo.alerter.Alerter;
 
@@ -86,7 +90,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private RouteInfo route;
     private LocusService locusService;
-    private LatLng myLatLanLocation;
+    private LatLng myLatLanLocation, speedLocation;
     private Location myLocation;
 
     private CoordinatorLayout layout;
@@ -104,6 +108,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private MaterialSheetFab<Fab> materialSheetFab;
     private Handler bearingHandler, realtimeIncidentHandler;
     private Handler speedPointHandler, criticalLocationHandler, trafficSignHandler, blackspotHandler;
+    private Handler speedCalcHandler;
     private int total_distance, total_duration;
     private ScoreDB scoreDB;
 
@@ -134,6 +139,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     //Static Incident Lists
     private HashMap<String,RealtimeIncident> realtimeIncidentHashMap;
+    private HashMap<LatLng,Double>  speedMap;
     private List<SpeedLimitPoint> speedLimitPointList;
     private List<CriticalLocation> criticalLocationList;
     private List<TrafficSign> trafficSignList;
@@ -144,6 +150,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private int criticalLocationInterval = 1000;
     private int trafficSignInterval = 1000;
     private int blackspotInterval = 1000;
+    private int outOfRangeDistance = 100;
 
     private Circle realtimeCircle = null, trafficSignCircle = null, blackspotCircle = null;
     private Marker trafficSignMarker = null, blackspotMarker = null, realtimeMarker = null;
@@ -161,10 +168,12 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private TrafficSign currentTrafficSign = null;
     private BlackSpot currentBlackspot = null;
 
+    private int score_addIncident = 0, score_removeIncident = 0, score_OverSpeed = 0;
+
     ///////////////////////////////
+    private TextView test;
     private Queue<LatLng> pointQueue;
     private Handler mokeLocationGenerateHandler;
-
     //////////////////////////////
 
 
@@ -179,6 +188,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         Init();
 
         //////////////////////////////////////
+        test = findViewById(R.id.test);
         myLocation = new Location("Test");
         initializeData();
         pointQueue = new LinkedList<>();
@@ -220,8 +230,8 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             public void onClick(View view) {
                 try {
                     myRef.child(currentIncident.getIncident_id()).removeValue();
+                    score_removeIncident += 5;
                 }catch (Exception e){}
-                //currentMarker.remove();
                 incident_info.setState(BottomSheetBehavior.STATE_HIDDEN);
             }
         });
@@ -231,6 +241,13 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             public void onClick(View view) {
                 driveInfoSheet.setState(BottomSheetBehavior.STATE_HIDDEN);
                 fab.setVisibility(View.VISIBLE);
+            }
+        });
+
+        btn_emergency.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                generateDrivingSummery();
             }
         });
 
@@ -363,7 +380,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                     } else {
                         isMapDraggable = true;
                         img_position.setVisibility(View.GONE);
-                        setCameraBounds();
+                        MapController.setCameraBounds(route.getStart_point(),route.getDestination(),mMap);
                         visualizeIncidentData();
                         mMap.getUiSettings().setAllGesturesEnabled(true);
                         btn_cam_ctrl.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_recenter));
@@ -451,6 +468,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         criticalLocationHandler = new Handler();
         trafficSignHandler = new Handler();
         blackspotHandler = new Handler();
+        speedCalcHandler = new Handler();
 
         btn_slideDown = findViewById(R.id.btn_sheetDown);
         btn_voiceAssistant = findViewById(R.id.btn_voiceAssistant);
@@ -492,6 +510,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         img_incident = findViewById(R.id.img_incident_icon);
 
         realtimeIncidentHashMap = new HashMap<>();
+        speedMap = new HashMap<>();
         speedLimitPointList = new ArrayList<>();
         criticalLocationList = new ArrayList<>();
         trafficSignList = new ArrayList<>();
@@ -513,7 +532,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
         mMap.getUiSettings().setMapToolbarEnabled(false);
         mMap.getUiSettings().setCompassEnabled(false);
-        //mMap.getUiSettings().setAllGesturesEnabled(false);
+        mMap.getUiSettings().setAllGesturesEnabled(false);
 
         isMapReady = true;
 
@@ -522,14 +541,6 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(route.getStart_point(),19.0f));
         resetDataMap();
         //////////////////////////////////////////////////////////////////////////////////////
-    }
-
-    private void drawPolyLine(List<LatLng> pointList, int color){
-        PolylineOptions polylineOptions = new PolylineOptions();
-        polylineOptions.color(getResources().getColor(color));
-        polylineOptions.addAll(pointList);
-        polylineOptions.width(12);
-        mMap.addPolyline(polylineOptions);
     }
 
     private void updateBearing(float bearing){
@@ -554,6 +565,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         criticalLocationHandler.postDelayed(criticalLocationThread,criticalLocationInterval);
         trafficSignHandler.postDelayed(trafficSignThread,trafficSignInterval);
         blackspotHandler.postDelayed(blackspotThread,blackspotInterval);
+        speedCalcHandler.postDelayed(speedCalcThread,1000);
     }
 
     @Override
@@ -568,6 +580,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         criticalLocationHandler.removeCallbacks(criticalLocationThread);
         trafficSignHandler.removeCallbacks(trafficSignThread);
         blackspotHandler.removeCallbacks(blackspotThread);
+        speedCalcHandler.removeCallbacks(speedCalcThread);
     }
 
     private String generateHashID(double lat, double lon, String incidentName){
@@ -643,6 +656,21 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         }
     };
 
+    private Runnable speedCalcThread = new Runnable() {
+        @Override
+        public void run() {
+            if(myLatLanLocation!=null){
+                if(speedLocation!=null){
+                    calcSpeed(myLatLanLocation,speedLocation);
+                }
+
+                speedLocation = myLatLanLocation;
+            }
+
+            speedCalcHandler.postDelayed(this,1000);
+        }
+    };
+
 
     @Override
     public void onBackPressed() {
@@ -651,6 +679,13 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         } else {
             super.onBackPressed();
         }
+    }
+
+    private void calcSpeed(LatLng point1, LatLng point2){
+        Double speed = getDistance(point1,point2);
+        test.setText(speed + " ms");
+        if(speed!=0)
+            speedMap.put(myLatLanLocation,speed);
     }
 
     private int getIncidentImage(String incident_name){
@@ -673,11 +708,8 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
             if(currentIncident!=null){
                 if(!incident.getIncident_name().equals(currentIncident.getIncident_name())){
-                    System.out.println("Start");
                     myRef.child(incident.getIncident_id()).setValue(incident);
-                    scoreDB.scoreDao().insertScore(new Score(route.getEndLocation(),getCurrentDateTime(),25,0));
-                    setPopupMessage("New Earning","Congratulations! You have earned 25 points",R.drawable.icon_voice,false);
-                    System.out.println("Stop");
+                    score_addIncident += 25;
                 }
                 else
                     setMessage("This incident is already exists!");
@@ -719,7 +751,49 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 min_point = point;
         }
 
+        if(getDistance(myLocation,min_point)>outOfRangeDistance)
+            reRoute();
+
         return min_point;
+    }
+
+    private void reRoute() {
+        locusService.stopRealTimeGPSListening();
+        ///////////////
+        //mokeLocationGenerateHandler.removeCallbacks(mokeLocationGenerationThread);
+        //////////////////
+        bearingHandler.removeCallbacks(bearingThread);
+        realtimeIncidentHandler.removeCallbacks(realtimeIncidentThread);
+        speedPointHandler.removeCallbacks(speedPointThread);
+        criticalLocationHandler.removeCallbacks(criticalLocationThread);
+        trafficSignHandler.removeCallbacks(trafficSignThread);
+        blackspotHandler.removeCallbacks(blackspotThread);
+
+        AlertDialog.Builder builder =
+                new AlertDialog.Builder(MapsNavigate.this,R.style.Theme_AppCompat_Dialog_Alert);
+        builder.setTitle("Out Of Range");
+        builder.setMessage("You are out of the selected path.");
+        builder.setCancelable(false);
+        builder.setPositiveButton("REROUTE", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                Intent intent = new Intent(getApplicationContext(),Navigation.class);
+                intent.putExtra("isReroute",true);
+                intent.putExtra("myLocLat",myLocation.getLatitude());
+                intent.putExtra("myLocLon",myLocation.getLongitude());
+                intent.putExtra("desLat",route.getDestination().latitude);
+                intent.putExtra("desLon",route.getDestination().longitude);
+                startActivity(intent);
+                finish();
+            }
+        }).setNegativeButton("EXIT", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                finish();
+            }
+        });
+
+        builder.create().show();
     }
 
     private void updateDriverInfoUI(){
@@ -916,7 +990,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 if(getDistance(point,new LatLng(speedLimitPoint.getLatitude(),speedLimitPoint.getLongitude()))<=speedLimitPoint.getRadius())
                     speedList.add(point);
             }
-            drawPolyLine(speedList,R.color.speedPointColor);
+            MapController.drawPolyline(getApplicationContext(),speedList,R.color.speedPointColor,mMap);
             speedList.clear();
         }
     }
@@ -928,7 +1002,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 if(getDistance(point,new LatLng(criticalLocation.getLatitude(),criticalLocation.getLongitude()))<=criticalLocation.getRadius())
                     speedList.add(point);
             }
-            drawPolyLine(speedList,R.color.criticalLocationColor);
+            MapController.drawPolyline(getApplicationContext(),speedList,R.color.criticalLocationColor,mMap);
             speedList.clear();
         }
     }
@@ -1091,7 +1165,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         if(isMapReady){
             mMap.addMarker(new MarkerOptions().position(route.getStart_point()).title("My Location").icon(BitmapDescriptorFactory.fromResource(R.drawable.start_point)));
             mMap.addMarker(new MarkerOptions().position(route.getDestination()).title("Destination").icon(BitmapDescriptorFactory.fromResource(R.drawable.stop_point)));
-            drawPolyLine(route.getPoints(),R.color.colorPrimary);
+            MapController.drawPolyline(getApplicationContext(),route.getPoints(),R.color.colorPrimary,mMap);
             drawCriticalPath();
             drawSpeedPath();
         }
@@ -1106,14 +1180,28 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         blackspotHandler.postDelayed(blackspotThread,blackspotInterval);
     }
 
-    private void setCameraBounds()  //Set Camera bounds according to the Start & Destination Positions
-    {
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        builder.include(route.getStart_point());
-        builder.include(route.getDestination());
-        LatLngBounds bounds = builder.build();
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds,75);
-        mMap.animateCamera(cameraUpdate);
+    private void generateDrivingSummery(){
+        List<LatLng> latlngList = new ArrayList<>();
+        List<Double> speedList = new ArrayList<>();
+        for(LatLng point : speedMap.keySet())
+            latlngList.add(point);
+
+        for(Double val : speedMap.values())
+            speedList.add(val);
+
+        SummeryInfo summeryInfo = new SummeryInfo();
+        summeryInfo.setStart_location(route.getStart_point());
+        summeryInfo.setEnd_location(route.getDestination());
+        summeryInfo.setScore_addIncidents(score_addIncident);
+        summeryInfo.setScore_overSpeed(score_OverSpeed);
+        summeryInfo.setScore_removeIncidents(score_removeIncident);
+        summeryInfo.setLatlngMap(latlngList);
+        summeryInfo.setSpeedMap(speedList);
+
+        Intent intent = new Intent(MapsNavigate.this,DrivingSummery.class);
+        intent.putExtra("summeryInfo",summeryInfo);
+
+        startActivity(intent);
     }
 
     //////////////////////////////////////////////////////////////////

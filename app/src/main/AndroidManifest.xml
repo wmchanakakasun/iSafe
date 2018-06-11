@@ -44,7 +44,11 @@
             android:name=".MapsNavigate"
             android:label="@string/title_activity_maps_navigate" />
         <activity android:name=".MainMenu" />
-        <activity android:name=".PointsActivity"></activity>
+        <activity android:name=".PointsActivity" />
+        <activity android:name=".SettingsActivity" />
+        <activity
+            android:name=".DrivingSummery"
+            android:label="@string/title_activity_driving_summery"></activity>
     </application>
 
 </manifest>
