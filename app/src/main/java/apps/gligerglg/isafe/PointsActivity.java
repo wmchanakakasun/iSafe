@@ -2,14 +2,12 @@ package apps.gligerglg.isafe;
 
 import android.arch.persistence.room.Room;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import ru.dimorinny.floatingtextbutton.FloatingTextButton;
@@ -18,8 +16,8 @@ public class PointsActivity extends AppCompatActivity {
 
     private TextView txt_earnedPoints, txt_reducedPoints, txt_totalPoints;
     private FloatingTextButton btn_resetPoints;
-    private ScoreDB scoreDB;
-    private List<Score> scoreList;
+    private TripDB tripDB;
+    private List<Trip> tripList;
     private int earned=00, reduced=00, total=00;
 
     @Override
@@ -36,12 +34,12 @@ public class PointsActivity extends AppCompatActivity {
                 AlertDialog.Builder builder =
                         new AlertDialog.Builder(PointsActivity.this,R.style.Theme_AppCompat_Dialog_Alert);
                 builder.setTitle("Reset All Points");
-                builder.setMessage("Do you want to remove your all point earnings?");
+                builder.setMessage("Do you want to remove your all trip records from database?");
                 builder.setCancelable(false);
                 builder.setPositiveButton("RESET", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        scoreDB.scoreDao().deleteAll();
+                        tripDB.tripDao().deleteAll();
                         txt_totalPoints.setText("0");
                         txt_reducedPoints.setText("0");
                         txt_earnedPoints.setText("0" );
@@ -60,10 +58,10 @@ public class PointsActivity extends AppCompatActivity {
 
     private void updateUI() {
 
-        scoreList = scoreDB.scoreDao().getAllScore();
-        for(Score score : scoreList){
-            earned += score.getEarned_score();
-            reduced = score.getReduced_score();
+        tripList = tripDB.tripDao().getAllTrips();
+        for(Trip trip : tripList){
+            earned += trip.getEarned_score();
+            reduced = trip.getReduced_score();
         }
         total = earned - reduced;
 
@@ -78,7 +76,7 @@ public class PointsActivity extends AppCompatActivity {
         txt_totalPoints = findViewById(R.id.txt_totalPoints);
         btn_resetPoints = findViewById(R.id.btn_resetPoints);
 
-        scoreDB = Room.databaseBuilder(getApplicationContext(),ScoreDB.class,"ScoreDB").fallbackToDestructiveMigration()
+        tripDB = Room.databaseBuilder(getApplicationContext(),TripDB.class,"TripDB").fallbackToDestructiveMigration()
                 .allowMainThreadQueries()
                 .build();
     }

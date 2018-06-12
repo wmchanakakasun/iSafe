@@ -1,13 +1,12 @@
 package apps.gligerglg.isafe;
 
-import android.content.Intent;
-import android.os.Handler;
+import android.arch.persistence.room.Room;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v7.widget.AppCompatButton;
+import android.view.View;
 import android.widget.TextView;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -17,10 +16,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.Gson;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 public class DrivingSummery extends FragmentActivity implements OnMapReadyCallback {
 
@@ -35,6 +31,7 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
     private double totalDistance = 0;
     private double averageSpeed = 0;
 
+    private TripDB tripDB;
     private int addIncidentScore=0, removeIncidentScore=0, overSpeedScore=0, totalScore=0;
 
     private TextView txt_totalDistance, txt_totalTime, txt_averageSpeed;
@@ -51,21 +48,36 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
         mapFragment.getMapAsync(this);
 
         Init();
+        if(summeryInfo.isEndJourney())
+            saveSummery();
+
+        btnSave.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                finish();
+            }
+        });
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        mMap.getUiSettings().setRotateGesturesEnabled(false);
+        mMap.getUiSettings().setMapToolbarEnabled(false);
         updateUI();
     }
 
-    private void Init(){
+    private void Init() {
         String dataset = getIntent().getStringExtra("summeryInfo");
         if(dataset!=null){
             Gson gson = new Gson();
             summeryInfo = gson.fromJson(dataset,SummeryInfo.class);
             speedMap = summeryInfo.getSpeedMarkerList();
         }
+
+        tripDB = Room.databaseBuilder(getApplicationContext(),TripDB.class,"TripDB").fallbackToDestructiveMigration()
+                .allowMainThreadQueries()
+                .build();
 
         txt_totalDistance = findViewById(R.id.txt_summery_distance);
         txt_totalTime = findViewById(R.id.txt_summery_time);
@@ -75,6 +87,11 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
         txt_scoreOverSpeed = findViewById(R.id.txt_summery_overSpeed);
         txt_scoreTotal = findViewById(R.id.txt_summery_totalScore);
         btnSave = findViewById(R.id.btn_summery_save);
+
+        if(summeryInfo.isEndJourney())
+            btnSave.setText("SAVE AND END JOURNEY");
+        else
+            btnSave.setText("BACK TO NAVIGATION");
 
         addIncidentScore = summeryInfo.getScore_addIncidents();
         removeIncidentScore = summeryInfo.getScore_removeIncidents();
@@ -140,28 +157,28 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
     private String generateDistanceString(double Distance){
         String distance = "";
         if(Distance>=1000) {
-            distance += (Distance / 1000) + " km ";
+            distance += String.format("%.0f",(Distance / 1000)) + " km ";
             Distance%=1000;
         }
         if(Distance<1000)
-            distance += String.format("%.2f",Distance) + " m ";
+            distance += String.format("%.0f",Distance) + " m ";
         return distance;
     }
 
     private String generateTimeString(double Time){
         String time = "";
         if(Time>=3600){
-            time += (Time/3600) + " H ";
+            time += String.format("%.0f",(Time/3600)) + " H ";
             Time%=3600;
         }
 
         if(Time>=60){
-            time += (Time/60) + " m ";
+            time += String.format("%.0f",(Time/60)) + " m ";
             Time%=60;
         }
 
         if(Time<60)
-            time += Time + " s ";
+            time += String.format("%.0f",Time) + " s ";
 
         return time;
     }
@@ -173,4 +190,14 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
         return speed;
     }
 
+    private void saveSummery(){
+        String speedMarkerList = new Gson().toJson(speedMap);
+        Trip trip = new Trip();
+        trip.setDateTime(summeryInfo.getStartTime());
+        trip.setEarned_score(addIncidentScore + removeIncidentScore);
+        trip.setReduced_score(overSpeedScore);
+        trip.setRoute(summeryInfo.getRoute());
+        trip.setSpeedMarkerList(speedMarkerList);
+        tripDB.tripDao().insertTrip(trip);
+    }
 }

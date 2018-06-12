@@ -110,7 +110,6 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private Handler speedPointHandler, criticalLocationHandler, trafficSignHandler, blackspotHandler;
     private Handler speedCalcHandler;
     private int total_distance, total_duration;
-    private ScoreDB scoreDB;
 
     private static final int bearingInterval = 2000;
 
@@ -165,6 +164,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private BlackSpot currentBlackspot = null;
 
     private int score_addIncident = 0, score_removeIncident = 0, score_OverSpeed = 0;
+    private String startTime;
 
     ///////////////////////////////
     private TextView test;
@@ -243,7 +243,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         btn_emergency.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                generateDrivingSummery();
+                generateDrivingSummery(false);
             }
         });
 
@@ -448,10 +448,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         total_distance = route.getDistance();
         total_duration = route.getDuration();
         locusInterval = (int) ((route.getPoints().size() * 0.02 *2) + 500);
-
-        scoreDB = Room.databaseBuilder(getApplicationContext(),ScoreDB.class,"ScoreDB").fallbackToDestructiveMigration()
-                .allowMainThreadQueries()
-                .build();
+        startTime = getCurrentDateTime();
 
         locusService = new LocusService(getApplicationContext());
         img_position = findViewById(R.id.img_poition);
@@ -1137,7 +1134,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         blackspotHandler.postDelayed(blackspotThread,blackspotInterval);
     }
 
-    private void generateDrivingSummery(){
+    private void generateDrivingSummery(boolean isEndJourney){
         SummeryInfo summeryInfo = new SummeryInfo();
         summeryInfo.setStart_location(route.getStart_point());
         summeryInfo.setEnd_location(route.getDestination());
@@ -1145,6 +1142,9 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         summeryInfo.setScore_overSpeed(score_OverSpeed);
         summeryInfo.setScore_removeIncidents(score_removeIncident);
         summeryInfo.setSpeedMarkerList(speedMap);
+        summeryInfo.setRoute("To " + route.getEndLocation());
+        summeryInfo.setStartTime(startTime);
+        summeryInfo.setEndJourney(isEndJourney);
         String dataSet = new Gson().toJson(summeryInfo);
         Intent intent = new Intent(MapsNavigate.this,DrivingSummery.class);
         intent.putExtra("summeryInfo",dataSet);
