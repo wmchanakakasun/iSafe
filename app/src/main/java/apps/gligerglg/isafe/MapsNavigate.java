@@ -96,7 +96,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private CoordinatorLayout layout;
     private Location bearingLocation = new Location("Bearing");
     private ImageButton btn_slideDown;
-    private LinearLayout btn_voiceAssistant, btn_newIncident, btn_dayNight, btn_emergency;
+    private LinearLayout btn_voiceAssistant, btn_newIncident, btn_dayNight, btn_emergency, btn_staticIncident;
     private CardView btn_incident_accident, btn_incident_traffic, btn_incident_hazard, btn_incident_clauser, btn_incident_flood, btn_incident_landslip;
 
     private ConstraintLayout driveInfoLayout, incidentLayout, incident_info_layout;
@@ -112,9 +112,10 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private int total_distance, total_duration;
 
     private static final int bearingInterval = 2000;
-
+    private Double speed=0.0;
+    private double dynamicRadius=0.0;
     private int locusInterval = 1000;
-    private static final int realtimeRadius = 50;
+    private int realtimeRadius = 50;
 
     private ImageView img_position;
     FirebaseDatabase database;
@@ -291,6 +292,19 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                     driveInfoSheet.setState(BottomSheetBehavior.STATE_HIDDEN);
                 img_position.setVisibility(View.GONE);
                 incidentSheet.setState(BottomSheetBehavior.STATE_EXPANDED);
+                materialSheetFab.hideSheet();
+                fab.setVisibility(View.GONE);
+            }
+        });
+
+        btn_staticIncident.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(MapsNavigate.this,R.style.Theme_AppCompat_Dialog_Alert);
+                View view_dialog = getLayoutInflater().inflate(R.layout.add_new_static_incident,null);
+
+                builder.setView(view_dialog);
+                builder.create().show();
                 materialSheetFab.hideSheet();
                 fab.setVisibility(View.GONE);
             }
@@ -474,6 +488,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         btn_emergency = findViewById(R.id.btn_emergency);
         btn_newIncident = findViewById(R.id.btn_newIncident);
         btn_remove_incident = findViewById(R.id.btn_remove_incident);
+        btn_staticIncident = findViewById(R.id.btn_newStaticIncident);
 
         driveInfoLayout = findViewById(R.id.drive_info_layout);
         incidentLayout = findViewById(R.id.incident_layout);
@@ -679,8 +694,9 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void calcSpeed(LatLng point1, LatLng point2){
-        Double speed = getDistance(point1,point2);
-        test.setText(speed + " ms");
+        speed = getDistance(point1,point2);
+        dynamicRadius = speed * 1.5;
+        test.setText(String.format(".2f",speed) + " ms");
         if(speed!=0)
             speedMap.add(new SpeedMarker(myLatLanLocation.latitude,myLatLanLocation.longitude,speed));
     }
@@ -794,6 +810,8 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void realtimeIncidentReport(){
+        if(dynamicRadius>realtimeRadius)
+            realtimeRadius += dynamicRadius;
         for(RealtimeIncident point : realtimeIncidentHashMap.values()){
 
             if (getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude())) <= realtimeRadius) {
@@ -871,8 +889,13 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void trafficSignReport(){
+        double trafficRadius = 0;
         for(TrafficSign point : trafficSignList){
-            if(getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=point.getRadius()){
+            trafficRadius = point.getRadius();
+            if(dynamicRadius>trafficRadius)
+                trafficRadius += dynamicRadius;
+
+            if(getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=trafficRadius){
                 isTrafficObjectFound = true;
                 currentTrafficSign = point;
                 break;
@@ -904,8 +927,12 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void blackspotReport(){
+        double blackspotRadius=0;
         for(BlackSpot point : blackSpotList){
-            if(getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=point.getRadius()){
+            blackspotRadius = point.getRadius();
+            if(dynamicRadius>blackspotRadius)
+                blackspotRadius+=dynamicRadius;
+            if(getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=blackspotRadius){
                 isBlackspotObjectFound = true;
                 currentBlackspot = point;
                 break;

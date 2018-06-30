@@ -18,7 +18,7 @@ import rx.functions.Action1;
 
 public class MainMenu extends AppCompatActivity {
 
-    private ImageButton btn_navigation, btn_neabyIncident, btn_history, btn_profile, btn_settings, btn_points;
+    private ImageButton btn_navigation, btn_neabyIncident, btn_history, btn_profile, btn_settings, btn_appInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +53,7 @@ public class MainMenu extends AppCompatActivity {
         btn_history = findViewById(R.id.btn_mnu_history);
         btn_profile = findViewById(R.id.btn_mnu_profile);
         btn_settings = findViewById(R.id.btn_mnu_settings);
-        btn_points = findViewById(R.id.btn_mnu_points);
+        btn_appInfo = findViewById(R.id.btn_mnu_appInfo);
     }
 
     private void initializeMethods(){
@@ -68,14 +68,13 @@ public class MainMenu extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(MainMenu.this,SettingsActivity.class));
-
             }
         });
 
-        btn_points.setOnClickListener(new View.OnClickListener() {
+        btn_neabyIncident.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainMenu.this,PointsActivity.class));
+                startActivity(new Intent(MainMenu.this,NearbyMap.class));
             }
         });
     }
