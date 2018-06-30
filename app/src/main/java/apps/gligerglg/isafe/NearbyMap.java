@@ -2,6 +2,8 @@ package apps.gligerglg.isafe;
 
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -28,5 +30,29 @@ public class NearbyMap extends FragmentActivity implements OnMapReadyCallback {
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+    }
+
+    public void getRealtimeIncidents(View view){
+        message("realtime");
+    }
+
+    public void getBlackspotLocations(View view){
+        message("blackspot");
+    }
+
+    public void getTrafficIncidents(View view){
+        message("traffic");
+    }
+
+    public void getSpeedLocations(View view){
+        message("speed");
+    }
+
+    public void getCriticalLocations(View view){
+        message("critical");
+    }
+
+    private void message(String message){
+        Toast.makeText(getApplicationContext(),message,Toast.LENGTH_SHORT).show();
     }
 }

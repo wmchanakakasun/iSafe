@@ -29,7 +29,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                >
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -44,7 +45,8 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:background="@android:color/transparent"
-                        android:src="@mipmap/mnu_navigation" />
+                        android:src="@mipmap/nearby_realtime"
+                        android:onClick="getRealtimeIncidents"                        />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -52,7 +54,7 @@
                         android:layout_gravity="center"
                         android:layout_margin="5dp"
                         android:gravity="center"
-                        android:text="Start\nNavigation"
+                        android:text="Real-time\nIncidents"
                         android:textColor="@color/colorPrimaryDark" />
                 </LinearLayout>
 
@@ -61,7 +63,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:onClick="getBlackspotLocations">
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -76,7 +79,8 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:background="@android:color/transparent"
-                        android:src="@mipmap/mnu_navigation" />
+                        android:src="@mipmap/nearby_accident"
+                        android:onClick="getBlackspotLocations"/>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -84,7 +88,7 @@
                         android:layout_gravity="center"
                         android:layout_margin="5dp"
                         android:gravity="center"
-                        android:text="Start\nNavigation"
+                        android:text="Black-Spot\nLocations"
                         android:textColor="@color/colorPrimaryDark" />
                 </LinearLayout>
 
@@ -93,7 +97,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                >
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -108,7 +113,8 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:background="@android:color/transparent"
-                        android:src="@mipmap/mnu_navigation" />
+                        android:src="@mipmap/nearby_traffic"
+                        android:onClick="getTrafficIncidents"/>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -116,7 +122,7 @@
                         android:layout_gravity="center"
                         android:layout_margin="5dp"
                         android:gravity="center"
-                        android:text="Start\nNavigation"
+                        android:text="Traffic\nIncidents"
                         android:textColor="@color/colorPrimaryDark" />
                 </LinearLayout>
 
@@ -125,7 +131,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                >
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -140,7 +147,8 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:background="@android:color/transparent"
-                        android:src="@mipmap/mnu_navigation" />
+                        android:src="@mipmap/nearby_speed"
+                        android:onClick="getSpeedLocations"/>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -148,7 +156,7 @@
                         android:layout_gravity="center"
                         android:layout_margin="5dp"
                         android:gravity="center"
-                        android:text="Start\nNavigation"
+                        android:text="Speed Limit\nLocations"
                         android:textColor="@color/colorPrimaryDark" />
                 </LinearLayout>
 
@@ -157,7 +165,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                >
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -172,7 +181,8 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:background="@android:color/transparent"
-                        android:src="@mipmap/mnu_navigation" />
+                        android:src="@mipmap/nearby_critical"
+                        android:onClick="getCriticalLocations"/>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -180,7 +190,7 @@
                         android:layout_gravity="center"
                         android:layout_margin="5dp"
                         android:gravity="center"
-                        android:text="Start\nNavigation"
+                        android:text="Critical\nLocations"
                         android:textColor="@color/colorPrimaryDark" />
                 </LinearLayout>
 
