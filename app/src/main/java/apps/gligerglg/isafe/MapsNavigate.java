@@ -62,6 +62,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.gson.Gson;
 import com.gordonwong.materialsheetfab.MaterialSheetFab;
+import com.jaredrummler.materialspinner.MaterialSpinner;
 import com.tapadoo.alerter.Alerter;
 
 import org.json.JSONArray;
@@ -303,6 +304,15 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsNavigate.this,R.style.Theme_AppCompat_Dialog_Alert);
                 View view_dialog = getLayoutInflater().inflate(R.layout.add_new_static_incident,null);
 
+                MaterialSpinner spinner = view_dialog.findViewById(R.id.spinnerStatic);
+                spinner.setItems("BlackSpot Data","SpeedPoint Data","Critical Data","Traffic Data","Other Data");
+                spinner.setOnItemSelectedListener(new MaterialSpinner.OnItemSelectedListener<String>() {
+
+                    @Override public void onItemSelected(MaterialSpinner view, int position, long id, String item) {
+                        Toast.makeText(getApplicationContext(),item+"",Toast.LENGTH_SHORT).show();
+                    }
+                });
+
                 builder.setView(view_dialog);
                 builder.create().show();
                 materialSheetFab.hideSheet();
@@ -406,7 +416,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 RealtimeIncident incident =  dataSnapshot.getValue(RealtimeIncident.class);
                 boolean isInRange = false;
                 for(LatLng point: route.getPoints()){
-                        if(getDistance(point,new LatLng(incident.getLatitude(),incident.getLongitude()))<=realtimeRadius){
+                        if(MapController.getDistance(point,new LatLng(incident.getLatitude(),incident.getLongitude()))<=realtimeRadius){
                             isInRange = true;
                             break;
                         }
@@ -694,7 +704,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void calcSpeed(LatLng point1, LatLng point2){
-        speed = getDistance(point1,point2);
+        speed = MapController.getDistance(point1,point2);
         dynamicRadius = speed * 1.5;
         test.setText(String.format(".2f",speed) + " ms");
         if(speed!=0)
@@ -745,26 +755,15 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             speakNotification(message);
     }
 
-    private int mapMarkerIcon(String type){
-        switch (type){
-            case "Accident": return R.drawable.accident_pin;
-            case "Closure": return R.drawable.closure_pin;
-            case "Flood": return R.drawable.flood_pin;
-            case "Hazard": return R.drawable.hazard_pin;
-            case "Landslip": return R.drawable.landslip_pin;
-            case "Traffic-Jam": return R.drawable.traffic_pin;
-        }
-        return 0;
-    }
 
     private LatLng getNearestRoutePoint(LatLng myLocation) {
         LatLng min_point = route.getPoints().get(0);
         for(LatLng point : route.getPoints()){
-            if(getDistance(myLocation,point)<=getDistance(myLocation,min_point))
+            if(MapController.getDistance(myLocation,point)<=MapController.getDistance(myLocation,min_point))
                 min_point = point;
         }
 
-        if(getDistance(myLocation,min_point)>outOfRangeDistance)
+        if(MapController.getDistance(myLocation,min_point)>outOfRangeDistance)
             reRoute();
 
         return min_point;
@@ -814,7 +813,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             realtimeRadius += dynamicRadius;
         for(RealtimeIncident point : realtimeIncidentHashMap.values()){
 
-            if (getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude())) <= realtimeRadius) {
+            if (MapController.getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude())) <= realtimeRadius) {
                 isRealtimeObjectFound = true;
                 currentIncident = point;
                 break;
@@ -838,7 +837,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
             realtimeMarker = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(currentIncident.getLatitude(),currentIncident.getLongitude()))
-                    .icon(BitmapDescriptorFactory.fromResource(mapMarkerIcon(currentIncident.getIncident_name()))));
+                    .icon(BitmapDescriptorFactory.fromResource(MapController.mapMarkerIcon(currentIncident.getIncident_name()))));
 
         }else if(!isRealtimeObjectFound){
             if(realtimeCircle!=null)
@@ -851,7 +850,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     private void speedPointReport(){
         for(SpeedLimitPoint point : speedLimitPointList){
-            if(getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=point.getRadius()){
+            if(MapController.getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=point.getRadius()){
                 isSpeedLimitObjectFound = true;
                 currentSpeedPoint = point;
                 break;
@@ -870,7 +869,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     private void criticalLocationReport(){
         for(CriticalLocation point : criticalLocationList){
-            if(getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=point.getRadius()){
+            if(MapController.getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=point.getRadius()){
                 isCriticalObjectFound = true;
                 currentCriticalPoint = point;
                 break;
@@ -895,7 +894,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             if(dynamicRadius>trafficRadius)
                 trafficRadius += dynamicRadius;
 
-            if(getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=trafficRadius){
+            if(MapController.getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=trafficRadius){
                 isTrafficObjectFound = true;
                 currentTrafficSign = point;
                 break;
@@ -932,7 +931,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             blackspotRadius = point.getRadius();
             if(dynamicRadius>blackspotRadius)
                 blackspotRadius+=dynamicRadius;
-            if(getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=blackspotRadius){
+            if(MapController.getDistance(myLatLanLocation,new LatLng(point.getLatitude(),point.getLongitude()))<=blackspotRadius){
                 isBlackspotObjectFound = true;
                 currentBlackspot = point;
                 break;
@@ -968,7 +967,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         List<LatLng> speedList = new ArrayList<>();
         for(SpeedLimitPoint speedLimitPoint: speedLimitPointList){
             for(LatLng point : route.getPoints()){
-                if(getDistance(point,new LatLng(speedLimitPoint.getLatitude(),speedLimitPoint.getLongitude()))<=speedLimitPoint.getRadius())
+                if(MapController.getDistance(point,new LatLng(speedLimitPoint.getLatitude(),speedLimitPoint.getLongitude()))<=speedLimitPoint.getRadius())
                     speedList.add(point);
             }
             MapController.drawPolyline(getApplicationContext(),speedList,R.color.speedPointColor,mMap);
@@ -980,21 +979,12 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         List<LatLng> speedList = new ArrayList<>();
         for(CriticalLocation criticalLocation: criticalLocationList){
             for(LatLng point : route.getPoints()){
-                if(getDistance(point,new LatLng(criticalLocation.getLatitude(),criticalLocation.getLongitude()))<=criticalLocation.getRadius())
+                if(MapController.getDistance(point,new LatLng(criticalLocation.getLatitude(),criticalLocation.getLongitude()))<=criticalLocation.getRadius())
                     speedList.add(point);
             }
             MapController.drawPolyline(getApplicationContext(),speedList,R.color.criticalLocationColor,mMap);
             speedList.clear();
         }
-    }
-
-    private double getDistance(LatLng point1, LatLng point2) {
-        double p = 0.017453292519943295;
-        double a = 0.5 - Math.cos((point2.latitude - point1.latitude) * p)/2 +
-                Math.cos(point1.latitude * p) * Math.cos(point2.latitude * p) *
-                        (1 - Math.cos((point2.longitude - point1.longitude) * p))/2;
-
-        return 12.742 * Math.asin(Math.sqrt(a))*1000*1000;
     }
 
     private void setIncidentAlert(String incident_name, String message,String time, int image){
@@ -1105,7 +1095,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 mMap.addMarker(new MarkerOptions()
                         .position(new LatLng(incident.getLatitude(),incident.getLongitude()))
                         .title(incident.getIncident_name())
-                        .icon(BitmapDescriptorFactory.fromResource(mapMarkerIcon(incident.getIncident_name()))));
+                        .icon(BitmapDescriptorFactory.fromResource(MapController.mapMarkerIcon(incident.getIncident_name()))));
             }
 
             //Blackspots

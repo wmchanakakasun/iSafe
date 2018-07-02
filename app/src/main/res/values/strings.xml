@@ -80,12 +80,5 @@
     <string name="pref_title_vibrate">Vibrate</string>
     <string name="title_activity_driving_summery">Map</string>
 
-    <string-array name="spinner_staticIncident">
-        <item>BlackSpot Data</item>
-        <item>SpeedPoint Data</item>
-        <item>Critical Data</item>
-        <item>Traffic Data</item>
-        <item>Other Data</item>
-    </string-array>
     <string name="title_activity_nearby_map">Map</string>
 </resources>

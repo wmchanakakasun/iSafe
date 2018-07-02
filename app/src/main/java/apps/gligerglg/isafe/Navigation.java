@@ -12,6 +12,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.view.View;
 
+import com.afollestad.materialdialogs.MaterialDialog;
 import com.directions.route.AbstractRouting;
 import com.directions.route.Route;
 import com.directions.route.RouteException;
@@ -50,7 +51,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
     private GoogleMap mMap;
     private LatLng myPosition = null, destination = null;
     private LocusService locusService;
-
+    private MaterialDialog dialog;
     private double myLocLat, myLocLon, desLat,desLon;
     private boolean isReroute = false;
     private CoordinatorLayout layout;
@@ -80,7 +81,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
                 if(myPosition==null) {
                     if (locusService.isGPSProviderEnabled()) {
                         locusService.startRealtimeGPSListening(2000);
-                        setMessage("Wait a moment until calculate your position");
+                        setProgressDialog("Calculating GPS Location");
                     } else
                         locusService.openSettingsWindow("iSafe needs to enable GPS service to acquire precise location data\n" +
                                 "Do you need to enable GPS manually?");
@@ -99,6 +100,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
             public void OnRealLocationChanged(Location location) {
                 if(location!=null){
                     mMap.clear();
+                    dialog.dismiss();
                     myPosition = new LatLng(location.getLatitude(),location.getLongitude());
                     mMap.addMarker(new MarkerOptions().position(myPosition).title("My Location"));
                     mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myPosition,14.0f));
@@ -272,6 +274,15 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
     @Override
     public void onRoutingCancelled() {
 
+    }
+
+    private void setProgressDialog(String message){
+        dialog = new MaterialDialog.Builder(this)
+                .content(message)
+                .progress(true, 0)
+                .progressIndeterminateStyle(true)
+                .cancelable(false)
+                .show();
     }
 
 }

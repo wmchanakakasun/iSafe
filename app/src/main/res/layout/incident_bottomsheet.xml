@@ -38,7 +38,7 @@
                 android:layout_height="50dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_margin="5dp"
-                android:src="@drawable/icon_landslip" />
+                app:srcCompat="@drawable/icon_landslip" />
 
             <View
                 android:layout_width="match_parent"
