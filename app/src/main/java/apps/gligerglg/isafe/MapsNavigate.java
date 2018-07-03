@@ -687,6 +687,19 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 }
 
                 speedLocation = myLatLanLocation;
+                if(MapController.getDistance(myLatLanLocation,route.getPoints().get(route.getPoints().size()-1))<=10){
+
+                    //Remove all Thread Callbacks
+                    bearingHandler.removeCallbacks(bearingThread);
+                    realtimeIncidentHandler.removeCallbacks(realtimeIncidentThread);
+                    speedPointHandler.removeCallbacks(speedPointThread);
+                    criticalLocationHandler.removeCallbacks(criticalLocationThread);
+                    trafficSignHandler.removeCallbacks(trafficSignThread);
+                    blackspotHandler.removeCallbacks(blackspotThread);
+
+                    generateDrivingSummery(true);
+                    finish();
+                }
             }
 
             speedCalcHandler.postDelayed(this,1000);
@@ -706,7 +719,6 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private void calcSpeed(LatLng point1, LatLng point2){
         speed = MapController.getDistance(point1,point2);
         dynamicRadius = speed * 1.5;
-        test.setText(String.format(".2f",speed) + " ms");
         if(speed!=0)
             speedMap.add(new SpeedMarker(myLatLanLocation.latitude,myLatLanLocation.longitude,speed));
     }
@@ -1171,19 +1183,22 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     //////////////////////////////////////////////////////////////////
     //Testing Methods
     private void mokeLocationGenerator(){
-        LatLng point = pointQueue.poll();
-        myLocation.setLatitude(point.latitude);
-        myLocation.setLongitude(point.longitude);
-        myLatLanLocation = point;
+        try {
+            LatLng point = pointQueue.poll();
+            myLocation.setLatitude(point.latitude);
+            myLocation.setLongitude(point.longitude);
+            myLatLanLocation = point;
 
-        myLatLanLocation = getNearestRoutePoint(myLatLanLocation);
+            myLatLanLocation = getNearestRoutePoint(myLatLanLocation);
 
-        if(!isMapDraggable) {
-            mMap.animateCamera(CameraUpdateFactory.newLatLng(myLatLanLocation));
-            img_position.setVisibility(View.VISIBLE);
-            if (mMap.getCameraPosition().zoom != 19.0f)
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLanLocation, 19.0f));
+            if(!isMapDraggable) {
+                mMap.animateCamera(CameraUpdateFactory.newLatLng(myLatLanLocation));
+                img_position.setVisibility(View.VISIBLE);
+                if (mMap.getCameraPosition().zoom != 19.0f)
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLanLocation, 19.0f));
+            }
         }
+        catch (Exception e){}
     }
 
     Runnable mokeLocationGenerationThread = new Runnable() {

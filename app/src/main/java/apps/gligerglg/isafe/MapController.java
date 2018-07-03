@@ -52,4 +52,67 @@ public class MapController {
         }
         return 0;
     }
+
+    public static String generateDistanceString(double Distance){
+        String distance = "";
+        if(Distance>=1000) {
+            distance += String.format("%.0f",(Distance / 1000)) + " km ";
+            Distance%=1000;
+        }
+        if(Distance<1000)
+            distance += String.format("%.0f",Distance) + " m ";
+        return distance;
+    }
+
+    public static String generateSimpleDistanceString(double Distance){
+        String distance = "";
+        if(Distance>=1000) {
+            distance += String.format("%.0f",(Distance / 1000)) + " km ";
+            Distance%=1000;
+        }
+        else if(Distance<1000)
+            distance += String.format("%.0f",Distance) + " m ";
+        return distance;
+    }
+
+    public static String generateTimeString(double Time){
+        String time = "";
+        if(Time>=3600){
+            time += String.format("%.0f",(Time/3600)) + " H ";
+            Time%=3600;
+        }
+
+        if(Time>=60){
+            time += String.format("%.0f",(Time/60)) + " m ";
+            Time%=60;
+        }
+
+        if(Time<60)
+            time += String.format("%.0f",Time) + " s ";
+
+        return time;
+    }
+
+    public static String generateSimpleTimeString(double Time){
+        String time = "";
+        if(Time>=3600){
+            time += String.format("%.0f",(Time/3600)) + " H ";
+            Time%=3600;
+        }
+        else if(Time>=60){
+            time += String.format("%.0f",(Time/60)) + " m ";
+            Time%=60;
+        }
+        else if(Time<60)
+            time += String.format("%.0f",Time) + " s ";
+
+        return time;
+    }
+
+    public static String generateSpeedString(double Speed){
+        String speed = "";
+        Speed *=(18/5.0);
+        speed += String.format("%.2f",Speed) + " kmph";
+        return speed;
+    }
 }

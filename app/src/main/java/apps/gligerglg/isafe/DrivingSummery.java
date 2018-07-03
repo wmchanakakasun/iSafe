@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.support.v7.widget.AppCompatButton;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -24,8 +25,8 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
     private SummeryInfo summeryInfo;
     private List<SpeedMarker> speedMap;
 
-    private static final int lowerSpeed = 10;
-    private static final int midSpeed = 15;
+    private static final int lowerSpeed = 12;
+    private static final int midSpeed = 17;
 
     private double totalTime = 0;
     private double totalDistance = 0;
@@ -48,12 +49,12 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
         mapFragment.getMapAsync(this);
 
         Init();
-        if(summeryInfo.isEndJourney())
-            saveSummery();
 
         btnSave.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(summeryInfo.isEndJourney())
+                    saveSummery();
                 finish();
             }
         });
@@ -110,19 +111,19 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
                 mMap.addMarker(new MarkerOptions()
                         .position(new LatLng(marker.getLatitude(), marker.getLongitude()))
                         .title("Lower Speed")
-                        .snippet(generateSpeedString(marker.getSpeed()))
+                        .snippet(MapController.generateSpeedString(marker.getSpeed()))
                         .icon(BitmapDescriptorFactory.fromResource(R.drawable.low_speed_marker)));
             else if(marker.getSpeed()<midSpeed)
                 mMap.addMarker(new MarkerOptions()
                         .position(new LatLng(marker.getLatitude(), marker.getLongitude()))
                         .title("Mid Speed")
-                        .snippet(generateSpeedString(marker.getSpeed()))
+                        .snippet(MapController.generateSpeedString(marker.getSpeed()))
                         .icon(BitmapDescriptorFactory.fromResource(R.drawable.mid_speed_marker)));
             else if(marker.getSpeed()>=midSpeed)
                 mMap.addMarker(new MarkerOptions()
                         .position(new LatLng(marker.getLatitude(), marker.getLongitude()))
                         .title("Higher Speed")
-                        .snippet(generateSpeedString(marker.getSpeed()))
+                        .snippet(MapController.generateSpeedString(marker.getSpeed()))
                         .icon(BitmapDescriptorFactory.fromResource(R.drawable.high_speed_marker)));
 
             route.add(new LatLng(marker.getLatitude(), marker.getLongitude()));
@@ -145,49 +146,13 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
         MapController.setCameraBounds(summeryInfo.getStart_location(),summeryInfo.getEnd_location(),mMap);
         MapController.drawPolyline(getApplicationContext(),route,R.color.colorPrimaryDark,mMap);
 
-        txt_totalDistance.setText(generateDistanceString(totalDistance));
-        txt_totalTime.setText(generateTimeString(totalTime));
-        txt_averageSpeed.setText(generateSpeedString(averageSpeed));
+        txt_totalDistance.setText(MapController.generateDistanceString(totalDistance));
+        txt_totalTime.setText(MapController.generateTimeString(totalTime));
+        txt_averageSpeed.setText(MapController.generateSpeedString(averageSpeed));
         txt_scoreAddIncident.setText("" + addIncidentScore);
         txt_scoreRemoveIncident.setText("" + removeIncidentScore);
         txt_scoreOverSpeed.setText("" + overSpeedScore);
         txt_scoreTotal.setText("" + totalScore);
-    }
-
-    private String generateDistanceString(double Distance){
-        String distance = "";
-        if(Distance>=1000) {
-            distance += String.format("%.0f",(Distance / 1000)) + " km ";
-            Distance%=1000;
-        }
-        if(Distance<1000)
-            distance += String.format("%.0f",Distance) + " m ";
-        return distance;
-    }
-
-    private String generateTimeString(double Time){
-        String time = "";
-        if(Time>=3600){
-            time += String.format("%.0f",(Time/3600)) + " H ";
-            Time%=3600;
-        }
-
-        if(Time>=60){
-            time += String.format("%.0f",(Time/60)) + " m ";
-            Time%=60;
-        }
-
-        if(Time<60)
-            time += String.format("%.0f",Time) + " s ";
-
-        return time;
-    }
-
-    private String generateSpeedString(double Speed){
-        String speed = "";
-        Speed *=(18/5.0);
-        speed += String.format("%.2f",Speed) + " kmph";
-        return speed;
     }
 
     private void saveSummery(){
@@ -196,8 +161,13 @@ public class DrivingSummery extends FragmentActivity implements OnMapReadyCallba
         trip.setDateTime(summeryInfo.getStartTime());
         trip.setEarned_score(addIncidentScore + removeIncidentScore);
         trip.setReduced_score(overSpeedScore);
+        trip.setTotal_score(addIncidentScore + removeIncidentScore - overSpeedScore);
         trip.setRoute(summeryInfo.getRoute());
         trip.setSpeedMarkerList(speedMarkerList);
+        trip.setAverageSpeed(averageSpeed);
+        trip.setTotalDistance(totalDistance);
+        trip.setTotalDuration(totalTime);
         tripDB.tripDao().insertTrip(trip);
     }
+
 }

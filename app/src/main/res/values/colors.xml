@@ -10,5 +10,6 @@
     <color name="roadSignColor">#255dea</color>
     <color name="blackspotColor">#e61919</color>
     <color name="windowBackground">#fff</color>
+    <color name="mainMenuBackground">#eceff0</color>
     <color name="alternativeRouteColor">#FF7C7A7B</color>
 </resources>

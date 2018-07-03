@@ -81,4 +81,5 @@
     <string name="title_activity_driving_summery">Map</string>
 
     <string name="title_activity_nearby_map">Map</string>
+    <string name="title_activity_history_speed_map">Map</string>
 </resources>

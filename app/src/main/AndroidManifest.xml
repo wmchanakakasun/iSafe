@@ -50,7 +50,11 @@
             android:label="@string/title_activity_driving_summery" />
         <activity
             android:name=".NearbyMap"
-            android:label="@string/title_activity_nearby_map"></activity>
+            android:label="@string/title_activity_nearby_map" />
+        <activity android:name=".DriverHistory" />
+        <activity
+            android:name=".HistorySpeedMap"
+            android:label="@string/title_activity_history_speed_map"></activity>
     </application>
 
 </manifest>
