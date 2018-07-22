@@ -10,9 +10,13 @@ import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.maps.model.RoundCap;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class MapController {
+    private static final int gpsGap = 5;
+
     public static void drawPolyline(Context context, List<LatLng> pointList, int color, GoogleMap mMap){
         PolylineOptions polylineOptions = new PolylineOptions();
         polylineOptions.color(context.getResources().getColor(color));
@@ -114,5 +118,29 @@ public class MapController {
         Speed *=(18/5.0);
         speed += String.format("%.2f",Speed) + " kmph";
         return speed;
+    }
+
+    public static List<LatLng> generateContinuousPath(List<LatLng> pointList){
+        List<LatLng> continuousList = new ArrayList<>();
+        LinkedList<LatLng> pointQueue = new LinkedList<>(pointList);
+        continuousList.add(pointQueue.poll());
+
+        while (!pointQueue.isEmpty()){
+            if(getDistance(continuousList.get(continuousList.size()-1),pointQueue.peek())>gpsGap)
+                continuousList.add(generateNewLatLng(continuousList.get(continuousList.size()-1),pointQueue.peek()));
+            else
+                continuousList.add(pointQueue.poll());
+        }
+
+        return continuousList;
+    }
+
+    private static LatLng generateNewLatLng(LatLng start, LatLng end) {
+        LatLng newPoint;
+        double distance = getDistance(start,end);
+        double lat = ((gpsGap*end.latitude) + ((distance-gpsGap)*start.latitude))/distance;
+        double lon = ((gpsGap*end.longitude) + ((distance-gpsGap)*start.longitude))/distance;
+        newPoint = new LatLng(lat,lon);
+        return newPoint;
     }
 }

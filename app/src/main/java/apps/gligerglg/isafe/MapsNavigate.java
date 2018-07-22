@@ -136,6 +136,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     //Static Incident Lists
     private HashMap<String,RealtimeIncident> realtimeIncidentHashMap;
+    private List<LatLng> continuousPath;
     private List<SpeedMarker>  speedMap;
     private List<SpeedLimitPoint> speedLimitPointList;
     private List<CriticalLocation> criticalLocationList;
@@ -169,7 +170,6 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private String startTime;
 
     ///////////////////////////////
-    private TextView test;
     private Queue<LatLng> pointQueue;
     private Handler mokeLocationGenerateHandler;
     //////////////////////////////
@@ -186,12 +186,11 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         Init();
 
         //////////////////////////////////////
-        test = findViewById(R.id.test);
         myLocation = new Location("Test");
         initializeData();
         pointQueue = new LinkedList<>();
         mokeLocationGenerateHandler = new Handler();
-        for(LatLng point : route.getPoints()) {
+        for(LatLng point : continuousPath) {
             pointQueue.add(point);
         }
 
@@ -246,6 +245,8 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View view) {
                 generateDrivingSummery(false);
+                materialSheetFab.hideSheet();
+                fab.setVisibility(View.GONE);
             }
         });
 
@@ -469,9 +470,12 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             route = gson.fromJson(dataset,RouteInfo.class);
         }
 
+        continuousPath = new ArrayList<>(MapController.generateContinuousPath(route.getPoints()));
+
+
         total_distance = route.getDistance();
         total_duration = route.getDuration();
-        locusInterval = (int) ((route.getPoints().size() * 0.02 *2) + 500);
+
         startTime = getCurrentDateTime();
 
         locusService = new LocusService(getApplicationContext());
@@ -555,7 +559,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         mMap.getUiSettings().setMapToolbarEnabled(false);
         mMap.getUiSettings().setCompassEnabled(false);
         mMap.getUiSettings().setAllGesturesEnabled(false);
-
+        myLatLanLocation = route.getStart_point();
         isMapReady = true;
 
         /////////////////////////////////////////////////////////////////////////////////////
@@ -587,7 +591,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         criticalLocationHandler.postDelayed(criticalLocationThread,criticalLocationInterval);
         trafficSignHandler.postDelayed(trafficSignThread,trafficSignInterval);
         blackspotHandler.postDelayed(blackspotThread,blackspotInterval);
-        speedCalcHandler.postDelayed(speedCalcThread,1000);
+        speedCalcHandler.postDelayed(speedCalcThread,locusInterval);
     }
 
     @Override
@@ -687,7 +691,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 }
 
                 speedLocation = myLatLanLocation;
-                if(MapController.getDistance(myLatLanLocation,route.getPoints().get(route.getPoints().size()-1))<=10){
+                if(MapController.getDistance(myLatLanLocation,continuousPath.get(continuousPath.size()-1))<=10){
 
                     //Remove all Thread Callbacks
                     bearingHandler.removeCallbacks(bearingThread);
@@ -702,7 +706,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 }
             }
 
-            speedCalcHandler.postDelayed(this,1000);
+            speedCalcHandler.postDelayed(this,locusInterval);
         }
     };
 
@@ -770,7 +774,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     private LatLng getNearestRoutePoint(LatLng myLocation) {
         LatLng min_point = route.getPoints().get(0);
-        for(LatLng point : route.getPoints()){
+        for(LatLng point : continuousPath){
             if(MapController.getDistance(myLocation,point)<=MapController.getDistance(myLocation,min_point))
                 min_point = point;
         }
@@ -978,7 +982,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private void drawSpeedPath(){
         List<LatLng> speedList = new ArrayList<>();
         for(SpeedLimitPoint speedLimitPoint: speedLimitPointList){
-            for(LatLng point : route.getPoints()){
+            for(LatLng point : continuousPath){
                 if(MapController.getDistance(point,new LatLng(speedLimitPoint.getLatitude(),speedLimitPoint.getLongitude()))<=speedLimitPoint.getRadius())
                     speedList.add(point);
             }
@@ -990,7 +994,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private void drawCriticalPath(){
         List<LatLng> speedList = new ArrayList<>();
         for(CriticalLocation criticalLocation: criticalLocationList){
-            for(LatLng point : route.getPoints()){
+            for(LatLng point : continuousPath){
                 if(MapController.getDistance(point,new LatLng(criticalLocation.getLatitude(),criticalLocation.getLongitude()))<=criticalLocation.getRadius())
                     speedList.add(point);
             }
@@ -1151,6 +1155,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             MapController.drawPolyline(getApplicationContext(),route.getPoints(),R.color.colorPrimary,mMap);
             drawCriticalPath();
             drawSpeedPath();
+
         }
 
         //Start all threads
@@ -1205,7 +1210,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         @Override
         public void run() {
             mokeLocationGenerator();
-            mokeLocationGenerateHandler.postDelayed(this,700);
+            mokeLocationGenerateHandler.postDelayed(this,500);
         }
     };
 
