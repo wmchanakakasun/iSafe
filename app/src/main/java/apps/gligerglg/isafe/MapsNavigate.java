@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.Point;
 import android.location.Location;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.speech.tts.TextToSpeech;
 import android.support.annotation.NonNull;
@@ -38,6 +39,11 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -172,7 +178,12 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     ///////////////////////////////
     private Queue<LatLng> pointQueue;
     private Handler mokeLocationGenerateHandler;
+    private TextView txtSpeed;
     //////////////////////////////
+
+    private FusedLocationProviderClient fusedLocationProviderClient;
+    private LocationRequest locationRequest;
+    private LocationCallback locationCallback;
 
 
     @Override
@@ -194,7 +205,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             pointQueue.add(point);
         }
 
-        mokeLocationGenerateHandler.postDelayed(mokeLocationGenerationThread,300);
+        //mokeLocationGenerateHandler.postDelayed(mokeLocationGenerationThread,300);
 
 
 
@@ -206,7 +217,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         TTSIntent.setAction(TextToSpeech.Engine.ACTION_CHECK_TTS_DATA);
         startActivityForResult(TTSIntent,DATA_CHECK_CODE);
 
-        locusService.setRealTimeLocationListener(new LocusService.RealtimeListenerService() {
+        /*locusService.setRealTimeLocationListener(new LocusService.RealtimeListenerService() {
             @Override
             public void OnRealLocationChanged(Location location) {
                 myLocation = location;
@@ -220,7 +231,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLanLocation, 19.0f));
                 }
             }
-        });
+        });*/
 
         btn_remove_incident.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -394,6 +405,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
                 try {
                     if (isMapDraggable) {
                         isMapDraggable = false;
+                        img_position.setVisibility(View.VISIBLE);
                         resetDataMap();
                         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLanLocation, 19.0f));
                         mMap.getUiSettings().setAllGesturesEnabled(false);
@@ -479,6 +491,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
         startTime = getCurrentDateTime();
 
         locusService = new LocusService(getApplicationContext());
+
         img_position = findViewById(R.id.img_poition);
         img_position.setVisibility(View.GONE);
         layout = findViewById(R.id.layout_navigate);
@@ -550,6 +563,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
         materialSheetFab = new MaterialSheetFab<>(fab, sheetView, overlay,
                 sheetColor, fabColor);
+        txtSpeed = findViewById(R.id.txt_googleSpeed);
     }
 
 
@@ -580,9 +594,13 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onResume() {
         super.onResume();
+        buildLocationRequest();
+        buildLocationCallback();
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         //locusService.startRealtimeGPSListening(locusInterval);
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest,locationCallback,Looper.myLooper());
 
         bearingHandler.postDelayed(bearingThread,bearingInterval);
         realtimeIncidentHandler.postDelayed(realtimeIncidentThread,realtimeIncidentInterval);
@@ -598,7 +616,8 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     protected void onPause() {
         super.onPause();
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        locusService.stopRealTimeGPSListening();
+        //locusService.stopRealTimeGPSListening();
+        fusedLocationProviderClient.removeLocationUpdates(locationCallback);
 
         bearingHandler.removeCallbacks(bearingThread);
         realtimeIncidentHandler.removeCallbacks(realtimeIncidentThread);
@@ -723,6 +742,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     private void calcSpeed(LatLng point1, LatLng point2){
         speed = MapController.getDistance(point1,point2);
         dynamicRadius = speed * 1.5;
+        txtSpeed.setText("Location Speed : " + myLocation.getSpeed() + "\nAlgo Speed : " + speed);
         if(speed!=0)
             speedMap.add(new SpeedMarker(myLatLanLocation.latitude,myLatLanLocation.longitude,speed));
     }
@@ -1187,7 +1207,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
 
     //////////////////////////////////////////////////////////////////
     //Testing Methods
-    private void mokeLocationGenerator(){
+   /* private void mokeLocationGenerator(){
         try {
             LatLng point = pointQueue.poll();
             myLocation.setLatitude(point.latitude);
@@ -1212,7 +1232,7 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
             mokeLocationGenerator();
             mokeLocationGenerateHandler.postDelayed(this,500);
         }
-    };
+    };*/
 
     private void initializeData(){
         speedLimitPointList.add(new SpeedLimitPoint(6.71009,80.52014,30,40,400,
@@ -1228,5 +1248,33 @@ public class MapsNavigate extends FragmentActivity implements OnMapReadyCallback
     }
 
     //////////////////////////////////////////////////////////////////
+
+    private void buildLocationRequest(){
+        locationRequest = new LocationRequest();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(5000);
+        locationRequest.setFastestInterval(1000);
+        locationRequest.setSmallestDisplacement(10);
+    }
+
+    private void buildLocationCallback(){
+        locationCallback = new LocationCallback(){
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                for(Location location:locationResult.getLocations()){
+                    myLocation = location;
+                    myLatLanLocation = new LatLng(myLocation.getLatitude(),myLocation.getLongitude());
+
+                    myLatLanLocation = getNearestRoutePoint(myLatLanLocation);
+                    if(!isMapDraggable) {
+                        mMap.animateCamera(CameraUpdateFactory.newLatLng(myLatLanLocation));
+                        img_position.setVisibility(View.VISIBLE);
+                        if (mMap.getCameraPosition().zoom != 19.0f)
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLanLocation, 19.0f));
+                    }
+                }
+            }
+        };
+    }
 }
 

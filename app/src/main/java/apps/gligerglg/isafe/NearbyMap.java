@@ -1,17 +1,25 @@
 package apps.gligerglg.isafe;
 
 import android.app.ProgressDialog;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
+import android.os.Looper;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -42,6 +50,9 @@ public class NearbyMap extends FragmentActivity implements OnMapReadyCallback {
     private static final int coverage_radius = 10000;
     private double distance;
     private LatLng myLocationLatLng, incidentLatLng;
+    private FusedLocationProviderClient locationProviderClient;
+    private LocationRequest locationRequest;
+    private LocationCallback locationCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,26 +64,16 @@ public class NearbyMap extends FragmentActivity implements OnMapReadyCallback {
         mapFragment.getMapAsync(this);
 
         Init();
+        buildLocationRequest();
+        buildLocationCallBack();
     }
 
     private void Init() {
-        locusService = new LocusService(getApplicationContext(),false);
         layout = findViewById(R.id.nearby_Layout);
         database = FirebaseDatabase.getInstance();
         myRef = database.getReferenceFromUrl("https://isafe-5e90f.firebaseio.com/");
-
-        locusService.setRealTimeLocationListener(new LocusService.RealtimeListenerService() {
-            @Override
-            public void OnRealLocationChanged(Location location) {
-                myLocation = location;
-                myLocationLatLng = new LatLng(location.getLatitude(),location.getLongitude());
-                dialog.dismiss();
-                mMap.addMarker(new MarkerOptions().position(new LatLng(myLocation.getLatitude(),myLocation.getLongitude())).title("My Location"));
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(myLocation.getLatitude(),myLocation.getLongitude()),10.0f));
-                locusService.stopRealTimeGPSListening();
-            }
-        });
-
+        locusService = new LocusService(getApplicationContext(),false);
+        locationProviderClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
     }
 
     @Override
@@ -157,7 +158,10 @@ public class NearbyMap extends FragmentActivity implements OnMapReadyCallback {
     private void getGPSLocation(){
         if(myLocation==null){
             if (locusService.isGPSProviderEnabled()) {
-                locusService.startRealtimeGPSListening(2000);
+                if (ActivityCompat.checkSelfPermission(getApplicationContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+                locationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper());
                 setProgressDialog("Calculating GPS Location");
             } else
                 setPopupMessage("Please enable GPS connectivity");
@@ -173,5 +177,30 @@ public class NearbyMap extends FragmentActivity implements OnMapReadyCallback {
     protected void onStart() {
         super.onStart();
         getGPSLocation();
+    }
+
+    private void buildLocationRequest(){
+        locationRequest = new LocationRequest();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setFastestInterval(1000);
+        locationRequest.setInterval(5000);
+        locationRequest.setSmallestDisplacement(10);
+    }
+
+    private void buildLocationCallBack() {
+        locationCallback = new LocationCallback(){
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                for(Location location : locationResult.getLocations()){
+                    if(location!=null){
+                        myLocation = location;
+                        myLocationLatLng = new LatLng(location.getLatitude(),location.getLongitude());
+                        dialog.dismiss();
+                        mMap.addMarker(new MarkerOptions().position(new LatLng(myLocation.getLatitude(),myLocation.getLongitude())).title("My Location"));
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(myLocation.getLatitude(),myLocation.getLongitude()),10.0f));
+                    }
+                }
+            }
+        };
     }
 }

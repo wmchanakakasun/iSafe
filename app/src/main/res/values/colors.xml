@@ -12,4 +12,5 @@
     <color name="windowBackground">#fff</color>
     <color name="mainMenuBackground">#eceff0</color>
     <color name="alternativeRouteColor">#FF7C7A7B</color>
+    <color name="mainBackground">#ebeff0</color>
 </resources>

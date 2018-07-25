@@ -2,10 +2,13 @@ package apps.gligerglg.isafe;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.Looper;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
@@ -19,6 +22,11 @@ import com.directions.route.RouteException;
 import com.directions.route.Routing;
 import com.directions.route.RoutingListener;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
@@ -46,13 +54,13 @@ import java.util.List;
 import plugins.gligerglg.locusservice.LocusService;
 import rx.functions.Action1;
 
-public class Navigation extends FragmentActivity implements OnMapReadyCallback,RoutingListener {
+public class Navigation extends FragmentActivity implements OnMapReadyCallback, RoutingListener {
 
     private GoogleMap mMap;
     private LatLng myPosition = null, destination = null;
     private LocusService locusService;
     private MaterialDialog dialog;
-    private double myLocLat, myLocLon, desLat,desLon;
+    private double myLocLat, myLocLon, desLat, desLon;
     private boolean isReroute = false;
     private CoordinatorLayout layout;
     private FloatingActionButton btn_gps;
@@ -60,8 +68,12 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
     private List<Polyline> polylines;
     private String destination_name;
     private Route selected_path;
-    private HashMap<Polyline,Route> routeHashMap = new HashMap<>();
-    private static final int[] COLORS = new int[]{R.color.colorPrimary,R.color.alternativeRouteColor};
+    private HashMap<Polyline, Route> routeHashMap = new HashMap<>();
+    private static final int[] COLORS = new int[]{R.color.colorPrimary, R.color.alternativeRouteColor};
+
+    private FusedLocationProviderClient locationProviderClient;
+    private LocationRequest locationRequest;
+    private LocationCallback locationCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,14 +85,21 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
         mapFragment.getMapAsync(this);
 
         Init();
+        buildLocationRequest();
+        buildLocationCallBack();
+
         //myPosition = new LatLng(5.9382617,80.5734473);
 
         btn_gps.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(myPosition==null) {
+                if (myPosition == null) {
                     if (locusService.isGPSProviderEnabled()) {
-                        locusService.startRealtimeGPSListening(2000);
+                        //locusService.startRealtimeGPSListening(2000);
+                        if (ActivityCompat.checkSelfPermission(getApplicationContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                            return;
+                        }
+                        locationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper());
                         setProgressDialog("Calculating GPS Location");
                     } else
                         locusService.openSettingsWindow("iSafe needs to enable GPS service to acquire precise location data\n" +
@@ -95,7 +114,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
         });
 
 
-        locusService.setRealTimeLocationListener(new LocusService.RealtimeListenerService() {
+        /*locusService.setRealTimeLocationListener(new LocusService.RealtimeListenerService() {
             @Override
             public void OnRealLocationChanged(Location location) {
                 if(location!=null){
@@ -110,7 +129,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
                         route();
                 }
             }
-        });
+        });*/
 
 
 
@@ -151,6 +170,7 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
         }
 
         locusService = new LocusService(this,false);
+        locationProviderClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
         layout = findViewById(R.id.main_coordinatorLayout);
         btn_gps = findViewById(R.id.main_fab_gps);
         autocompleteFragment = (PlaceAutocompleteFragment)
@@ -283,6 +303,35 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback,R
                 .progressIndeterminateStyle(true)
                 .cancelable(false)
                 .show();
+    }
+
+    private void buildLocationRequest(){
+        locationRequest = new LocationRequest();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setFastestInterval(1000);
+        locationRequest.setInterval(5000);
+        locationRequest.setSmallestDisplacement(10);
+    }
+
+    private void buildLocationCallBack() {
+        locationCallback = new LocationCallback(){
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                for(Location location : locationResult.getLocations()){
+                    if(location!=null){
+                        mMap.clear();
+                        dialog.dismiss();
+                        myPosition = new LatLng(location.getLatitude(),location.getLongitude());
+                        mMap.addMarker(new MarkerOptions().position(myPosition).title("My Location"));
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myPosition,14.0f));
+                        //locusService.stopRealTimeGPSListening();
+                        locationProviderClient.removeLocationUpdates(locationCallback);
+                        if(destination!=null)
+                            route();
+                    }
+                }
+            }
+        };
     }
 
 }
