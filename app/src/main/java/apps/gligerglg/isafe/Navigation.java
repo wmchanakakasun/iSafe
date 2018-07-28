@@ -14,6 +14,8 @@ import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.view.View;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.directions.route.AbstractRouting;
@@ -43,9 +45,12 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.maps.model.RoundCap;
 import com.google.gson.Gson;
+import com.jaredrummler.materialspinner.MaterialSpinner;
 
 import net.ralphpina.permissionsmanager.PermissionsManager;
 import net.ralphpina.permissionsmanager.PermissionsResult;
+
+import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -74,6 +79,12 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback, 
     private FusedLocationProviderClient locationProviderClient;
     private LocationRequest locationRequest;
     private LocationCallback locationCallback;
+
+    private int realtime_incidents = 0;
+    private int blackspots = 0;
+    private int speedpoints = 0;
+    private int critical = 0;
+    private int traffic = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,25 +123,6 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback, 
                 }
             }
         });
-
-
-        /*locusService.setRealTimeLocationListener(new LocusService.RealtimeListenerService() {
-            @Override
-            public void OnRealLocationChanged(Location location) {
-                if(location!=null){
-                    mMap.clear();
-                    dialog.dismiss();
-                    myPosition = new LatLng(location.getLatitude(),location.getLongitude());
-                    mMap.addMarker(new MarkerOptions().position(myPosition).title("My Location"));
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myPosition,14.0f));
-                    locusService.stopRealTimeGPSListening();
-
-                    if(destination!=null)
-                        route();
-                }
-            }
-        });*/
-
 
 
         autocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
@@ -181,30 +173,48 @@ public class Navigation extends FragmentActivity implements OnMapReadyCallback, 
 
     private void showPathInfoDialog()
     {
-        AlertDialog.Builder builder =
-                new AlertDialog.Builder(Navigation.this,R.style.Theme_AppCompat_Dialog_Alert);
-        builder.setTitle("Selected Path Navigation");
-        builder.setMessage("Distance\t\t" + selected_path.getDistanceText() + "\nDuration\t\t" + selected_path.getDurationText());
-        builder.setCancelable(false);
-        builder.setPositiveButton("START NAVIGATION", new DialogInterface.OnClickListener() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(Navigation.this,R.style.Theme_AppCompat_Dialog_Alert);
+        View view_dialog = getLayoutInflater().inflate(R.layout.choose_best_route_fragment,null);
+
+        TextView txt_totalDistance = view_dialog.findViewById(R.id.txt_total_distance);
+        TextView txt_totalDuration = view_dialog.findViewById(R.id.txt_total_time);
+        TextView txt_realtime_Incident = view_dialog.findViewById(R.id.txt_realtime_incidents);
+        TextView txt_blackspots = view_dialog.findViewById(R.id.txt_blackspots);
+        TextView txtcriticalLocation = view_dialog.findViewById(R.id.txt_criticalLocations);
+        TextView txt_speedPoint = view_dialog.findViewById(R.id.txt_speedPoints);
+        TextView txt_traffic = view_dialog.findViewById(R.id.txt_trafficSigns);
+        TextView btn_navigate = view_dialog.findViewById(R.id.btn_route_navigate);
+
+        txt_totalDistance.setText(selected_path.getDistanceText());
+        txt_totalDuration.setText(selected_path.getDurationText());
+        txt_realtime_Incident.setText(""+realtime_incidents);
+        txt_blackspots.setText(""+blackspots);
+        txtcriticalLocation.setText(""+critical);
+        txt_speedPoint.setText(""+speedpoints);
+        txt_traffic.setText(""+traffic);
+
+        final Intent intent = new Intent(getApplicationContext(),MapsNavigate.class);
+        RouteInfo routeInfo = new RouteInfo(myPosition,destination,selected_path.getPoints(),destination_name,
+                selected_path.getDistanceValue(),selected_path.getDurationValue());
+
+        //Static Data Class
+        StaticIncidents staticIncidents = new StaticIncidents();
+        String static_data = new Gson().toJson(staticIncidents);
+        String route_data = new Gson().toJson(routeInfo);
+        intent.putExtra("route",route_data);
+        intent.putExtra("staticdata",static_data);
+
+        btn_navigate.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Intent intent = new Intent(getApplicationContext(),MapsNavigate.class);
-                RouteInfo routeInfo = new RouteInfo(myPosition,destination,selected_path.getPoints(),destination_name,
-                        selected_path.getDistanceValue(),selected_path.getDurationValue());
-                String data = new Gson().toJson(routeInfo);
-                intent.putExtra("route",data);
+            public void onClick(View view) {
                 startActivity(intent);
                 finish();
             }
         });
-        builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.dismiss();
-            }
-        });
+
+        builder.setView(view_dialog);
         builder.create().show();
+
     }
 
     private void route(){

@@ -128,6 +128,8 @@ public class MapController {
         while (!pointQueue.isEmpty()){
             if(getDistance(continuousList.get(continuousList.size()-1),pointQueue.peek())>gpsGap)
                 continuousList.add(generateNewLatLng(continuousList.get(continuousList.size()-1),pointQueue.peek()));
+            else if(getDistance(continuousList.get(continuousList.size()-1),pointQueue.peek())<gpsGap)
+                pointQueue.poll();
             else
                 continuousList.add(pointQueue.poll());
         }
